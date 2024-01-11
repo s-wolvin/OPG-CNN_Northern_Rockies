@@ -1,18 +1,21 @@
 """
 Savanna Wolvin
 Created: Jun 5th, 2023
-Edited: Jun 5th, 2023
+Edited: Jan 11th, 2024
 
 
 ##### Summary ################################################################
-This script loads in the model and datasets and plots the convolutional layers.
-
+This script loads in a CNN model and datasets and plots the convolutional 
+layers.
 
 ##### Input ###################################################################
-
-
+model_dir       - Directory to CNN model
+model_name      - Name of folder containing CNN model run
+atmos_subset    - Subset of model to plot; training, testing, or validation
+save_dir        - Directory to save figures
 
 ##### Output ##################################################################
+{path}{df[0:10]}_{atmos_subset}_{lx}.png
 
 
 """
@@ -37,9 +40,6 @@ model_dir = "/uufs/chpc.utah.edu/common/home/strong-group7/savanna/cstar/regiona
 model_name = "2024-01-08_1113"
 
 atmos_subset = "training" # training, testing, validation
-atmos_name = ["IVT", "Geo. Hgt 500 hPa", "Accum. Precip.", 
-              "SH 850 hPa", "Temp. 700 hPa", "U-Wind 700 hPa",
-              "V-Wind 10-meter", "W-Wind 700 hPa"]
 
 save_dir = "/uufs/chpc.utah.edu/common/home/strong-group7/savanna/cstar/NR/"
 
@@ -47,7 +47,6 @@ save_dir = "/uufs/chpc.utah.edu/common/home/strong-group7/savanna/cstar/NR/"
 #%% Figure Presets
 
 extent = [-150, -100, 25, 57.5]
-#cmap_feat = 'viridis'
 cmap_feat = ncm.cmap('NCV_blu_red')
 
 
@@ -207,10 +206,6 @@ for dayx in range(0, atm_sz['time']):
                                      zorder=4, edgecolor="black")
                         ax[row].set_extent(extent)
                         
-                        # if lx == "input":
-                        #     ax[row, col].set_title(atmos_name[ax_count], fontsize=22,
-                        #                            weight='bold')
-                        
                         ax_count += 1
                         
                     elif ax_count >= np.shape(LAYER)[3]:
@@ -242,10 +237,6 @@ for dayx in range(0, atm_sz['time']):
                                          zorder=4, edgecolor="black")
                             ax[row, col].set_extent(extent)
                             
-                            # if lx == "input":
-                            #     ax[row, col].set_title(atmos_name[ax_count], fontsize=22,
-                            #                            weight='bold')
-                            
                             ax_count += 1
                             
                         elif ax_count >= np.shape(LAYER)[3]:
@@ -257,7 +248,6 @@ for dayx in range(0, atm_sz['time']):
             # Add Title with Date and Actual/Predicted Values
             df = np.array(date[dayx], dtype='str')
             df = str(df)
-            #plt.suptitle(df[0:10], fontsize=36, y=0.92, weight='bold')
             
             # create path to save
             path = model_dir + model_name + "/cnn_layers/"
@@ -271,54 +261,3 @@ for dayx in range(0, atm_sz['time']):
             
             plt.close()
             
-                
-                
-                
-                
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-        
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
