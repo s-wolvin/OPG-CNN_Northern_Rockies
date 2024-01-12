@@ -157,8 +157,6 @@ def train_cnn(model, opg_type, save_dir, epoch_num, patienceX, batch_sz,
                             validation_data=(inputs_vldtn, opg_vldtnX),
                             shuffle = True,
                             callbacks=[callback])
-                            #sample_weight=opg_train.samp_weight.values)
-                            #class_weight = dict(zip(range(np.shape(opg_train.opg)[1]), opg_train.clss_weight.values)))
         
         plots.training_validation_loss(save_dir, history.history, loss_metric, opg_type)
 
@@ -221,8 +219,6 @@ def structure_cnn(atmosphere, conv_act_func, nn_layer_width, nn_hidden_layer,
     x = tf_k.layers.MaxPooling2D(pool_size = 2, name="max_pooling_2")(x)
     x = tf_k.layers.Conv2D(filters=(kernal_num*4), kernel_size=kernal_sz, activation=conv_act_func, padding="same", name="conv2d_3") (x)
     x = tf_k.layers.MaxPooling2D(pool_size = 2, name="max_pooling_3")(x)
-    # x = tf_k.layers.Conv2D(filters=(kernal_num*6), kernel_size=kernal_sz, activation=conv_act_func, padding="same", name="conv2d_4") (x)
-    # x = tf_k.layers.MaxPooling2D(pool_size = 2, name="max_pooling_4")(x)
 
     x = tf_k.layers.Flatten(name="flatten")(x)
     

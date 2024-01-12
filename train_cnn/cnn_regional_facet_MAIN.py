@@ -140,15 +140,6 @@ Save logistics
 
 
 """
-#%% to do 
-#1 simplify changing the xarray into a np.array
-#3 change from 2D convolutions to 3D convolutions
-#4 k-fold cross validation
-
-# update load era5 to include crest level values
-# normalize the batches
-
-
 #%% Global Imports ###########################################################
 
 # import tensorflow as tf
@@ -161,7 +152,6 @@ import load_data as ld
 import conv_nn as cnn
 import cnn_plots as plots
 import grad_cam as grd_cm
-import feature_maps as ftr_mp
 import model_output as output
 import terrain_plots as terrain
 import pandas as pd
@@ -177,16 +167,6 @@ import pandas as pd
 data_set  = "ERA5" # Reanalysis, ERA5
 # Variable Name: Pressure Levels
 
-# data_types      = {"IVT": ["sfc"],
-#                     "uwnd": ["700", "300"],
-#                     "vwnd": ["700", "300"],
-#                     "wwnd": ["700", "300"],
-#                     "hgt": ["700", "300"],
-#                     "rhum": ["700"],
-#                     "uwnd_10m": ["on-facet"],
-#                     "vwnd_10m": ["on-facet"],
-#                     "precip": ["sfc"]}
-
 ###################
 data_types      = {"uwnd": ["700"],
                     "vwnd_10m": ["sfc"],
@@ -197,9 +177,6 @@ data_types      = {"uwnd": ["700"],
                     "shum": ["850"],
                     "temp": ["700"]}
 
-# data_types      = {"uwnd": ["700"],
-#                     "IVT": ["sfc"],
-#                     "precip": ["sfc"]}
 
 ### Domain Values
 years           = [1979, 2018]
@@ -255,11 +232,7 @@ notes = "\nNotes: \n" + \
         "- removed facet weighting \n" + \
         "- Re-run with 3 convolutions"
 
-# "- Weighted samples by more widespread events" + \
-# "- Weighted samples by daily mean OPG" + \
-    
-#        "- Weight by number of facets/half the total facets \n" + \
-#        "- Weights range from 0.06-1.97 \n" + \
+
 
 #%% Main Function ############################################################
 
@@ -430,21 +403,7 @@ def main():
               facet_opg.isel(time=np.isin(facet_opg.time, test_days)))
     grd_cm.plot_grad_cam(path, model, opg_type, "Training",
               atmosphere.isel(time=np.isin(atmosphere.time, train_days)),
-              facet_opg.isel(time=np.isin(facet_opg.time, train_days)))
-    
-    
-    ##### Plot Feature Maps ##############################################
-    ftr_mp.plot_feature_maps_conv2d_1(path, model, opg_type, "Training",
-              atmosphere.isel(time=np.isin(atmosphere.time, train_days)),
-              facet_opg.isel(time=np.isin(facet_opg.time, train_days)))
-    ftr_mp.plot_feature_maps_conv2d_1(path, model, opg_type, "Testing",
-              atmosphere.isel(time=np.isin(atmosphere.time, test_days)),
-              facet_opg.isel(time=np.isin(facet_opg.time, test_days)))  
-    
-    
-    # ftr_mp.plot_feature_maps_conv2d_2(path, model, opg_type, "Training",
-    #           atmosphere.isel(time=np.isin(atmosphere.time, train_days)),
-    #           facet_opg.isel(time=np.isin(facet_opg.time, train_days)))   
+              facet_opg.isel(time=np.isin(facet_opg.time, train_days))) 
         
         
 

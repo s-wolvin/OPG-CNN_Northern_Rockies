@@ -28,7 +28,6 @@ import pandas as pd
 import scipy.stats as sp_stats
 from wrf import interplevel
 from tqdm import tqdm
-from sklearn.utils import class_weight
 
 
 
@@ -295,7 +294,6 @@ def create_era5_dataset(d_years, d_lats, d_lons, d_types,
     atmos_mean = xr.Dataset()
     atmos_stdev = xr.Dataset()
     
-    hgt = 0
     
     for atmos_varsX in atmos_vars: # loop through each var
         pressure_levels = d_types[atmos_varsX]
@@ -570,43 +568,6 @@ def get_regional_opg(d_years, opg_dir, fi_dir, fi_region, months, opg_nans,
     fi_num      = facet_opg.facet_num.values
     if_opg      = (np.sum(facet_opg.opg.values > 0, axis=0) + np.sum(facet_opg.opg.values < 0, axis=0)) / np.shape(facet_opg.time.values)[0]
     facet_opg   = facet_opg.drop_sel(facet_num=(fi_num[if_opg < prct_obs]))
-    
-    # Formulate Sample Weights
-    # 0-1 weighting by number of facets
-    # opgs = facet_opg.opg.values.copy()
-    # opgs[opgs == 0] = np.nan
-    # y_ = np.sum(~pd.isna(opgs), axis = 1)
-    # samp_weight = y_ / np.shape(facet_opg.facet_num.values)[0] # weight by number of facets
-    # facet_opg['samp_weight'] = xr.DataArray(data=samp_weight, dims="time")
-    
-    opgs = facet_opg.opg.values.copy()
-    opgs[opgs == 0] = np.nan
-    y_ = np.sum(~pd.isna(opgs), axis = 1)
-    samp_weight = y_ / (np.shape(facet_opg.facet_num.values)[0]/2) # weight by number of facets
-    facet_opg['samp_weight'] = xr.DataArray(data=samp_weight, dims="time")
-    
-    # Weight by proportional high OPG
-    # opgs = facet_opg.opg.values.copy()
-    # opgs[opgs == 0] = np.nan
-    # y_ = np.nanmean(np.abs(opgs), axis = 1)
-    # samp_weight = y_ / np.nanmean(y_)
-    # facet_opg['samp_weight'] = xr.DataArray(data=samp_weight, dims="time")
-    
-    # y_ = np.sum(pd.isna(facet_opg.opg.values), axis=1)  # More Facets, More Weight
-    # y_ = np.sum(~pd.isna(facet_opg.opg.values), axis=1) # Less Facets, More Weight
-    # samp_weight = class_weight.compute_sample_weight(class_weight='balanced', y=y_)    
-    
-    
-
-    
-    ##### Formulate Case Weights    
-    # Weight by percent of Obs
-    y_ = np.sum(pd.isna(facet_opg.opg.values), axis=0)/np.mean(np.sum(pd.isna(facet_opg.opg.values), axis=0)) # Less Observations, More Weight
-    # y_ = (np.sum(pd.isna(facet_opg.opg.values), axis=0)/np.mean(np.sum(pd.isna(facet_opg.opg.values), axis=0)))**3 # Less Observations, More Weight
-    # y_ = np.sum(~pd.isna(facet_opg.opg.values), axis=0)/np.mean(np.sum(~pd.isna(facet_opg.opg.values), axis=0)) # More Observations, More Weight
-    # y_ = (np.sum(~pd.isna(facet_opg.opg.values), axis=0)/np.mean(np.sum(~pd.isna(facet_opg.opg.values), axis=0)))**5 # More Observations, More Weight
-    
-    facet_opg['clss_weight'] = xr.DataArray(data=y_, dims="facet_num")
 
     
     # Decide How To Handle NaNs
