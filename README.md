@@ -9,7 +9,7 @@ A convolutional neural network (CNN) is presented for downscaling winter precipi
 Support for this project was provided by the NOAA NWS Collaborative Science, Technology, and Applied Research (CSTAR) program. 
 
 
-## Folders:
+# Description of Each Folder:
 ### $k$-means_clustering_and_Grad-CAM
 Contains the Python scripts for $k$-means clustering of regional OPG events of the Western CONUS and creating composite Grad-CAMs for the CNN.
 
