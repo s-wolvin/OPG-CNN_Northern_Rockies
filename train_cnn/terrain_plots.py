@@ -1,7 +1,7 @@
 """ 
 Savanna Wolvin
 Created: Feb 14th, 2023
-Edited: Feb 23rd, 2023
+Edited: Apr 30th, 2024
     
 
 ##### SUMMARY #####
@@ -113,11 +113,11 @@ def facet_map_terrain(save_dir, fi_dir, facet_opg):
 
     # Save and Show Figure
     print("Save Figure of Facets and Terrain...")
-    plt.savefig(save_dir + "facet_map_terrain.png", dpi=400, transparent=True, \
-                bbox_inches='tight')
+    # plt.savefig(save_dir + "facet_map_terrain.png", dpi=400, transparent=True, \
+    #             bbox_inches='tight')
 
     plt.close()
-    # plt.show()
+    plt.show()
     
     
     
@@ -199,11 +199,11 @@ def facet_map_labeled(save_dir, fi_dir, facet_opg):
 
     # Save and Show Figure
     print("Save Figure of Labeled Facets...")
-    plt.savefig(save_dir + "facet_map_labeled.png", dpi=400, transparent=True, \
-                bbox_inches='tight')
+    # plt.savefig(save_dir + "facet_map_labeled.png", dpi=400, transparent=True, \
+    #             bbox_inches='tight')
 
     plt.close()
-    # plt.show()
+    plt.show()
     
     
     

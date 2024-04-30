@@ -135,16 +135,12 @@ def stats(save_dir, model, opg_type, name, atmos, opg):
         
         # error
         e[idx,facetx] = (predicted[idx,facetx] - actual[idx,facetx])
-        #e[idx,facetx] = (actual[idx,facetx] - predicted[idx,facetx])
         
         # absolute error
         ae[idx,facetx] = np.abs(predicted[idx,facetx] - actual[idx,facetx])
-        #ae[idx,facetx] = np.abs(actual[idx,facetx] - predicted[idx,facetx])
         
         # relative error
-        re[idx,facetx] = np.abs(predicted[idx,facetx] - actual[idx,facetx]) / actual[idx,facetx]
-        #re[idx,facetx] = ((actual[idx,facetx] - predicted[idx,facetx])/predicted[idx,facetx])
-    
+        re[idx,facetx] = np.abs(predicted[idx,facetx] - actual[idx,facetx]) / actual[idx,facetx]    
         
     stats     = xr.Dataset()
     facet_num = opg.facet_num.values

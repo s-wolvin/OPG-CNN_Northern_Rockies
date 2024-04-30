@@ -1,7 +1,7 @@
 """ 
 Savanna Wolvin
 Created: Sep 15th, 2022
-Edited: Mar 1st, 2023
+Edited: Apr 30th, 2024
     
 
 ##### SUMMARY #####
@@ -170,7 +170,7 @@ def hist_r2_rrank_MAE_slope(save_dir, model, opg_type, name, atmos, opg):
     axs[1,0].set_ylabel("Count of Facets", fontsize=12)
     axs[1,0].tick_params(labelsize=12)
     
-    # MSE
+    # ME
     n4,_,_ = axs[1,1].hist(me*1000, bins=np.arange(-1.5,1.5,0.15), 
                 edgecolor="black", facecolor="cornflowerblue")
     axs[1,1].set_title("Mean Error (" + units + ")", fontsize=14, weight='bold')
@@ -187,11 +187,11 @@ def hist_r2_rrank_MAE_slope(save_dir, model, opg_type, name, atmos, opg):
     axs[1,1].set(ylim=(0, ymax+1))
     
     # Save figure
-    plt.savefig(save_dir + str(name) + "_r2_slope_mae_mse.png", dpi=200, 
-                transparent=True, bbox_inches='tight')
+    # plt.savefig(save_dir + str(name) + "_r2_slope_mae_mse.png", dpi=200, 
+    #             transparent=True, bbox_inches='tight')
     
     # Show Figure
-    # plt.show()
+    plt.show()
     
     # Close Figure
     plt.close()
@@ -283,11 +283,11 @@ def heatmap_by_facet(save_dir, model, opg_type, name, atmos, opg):
         plt.grid(True)
         
         # save figure
-        plt.savefig(path + name + '_actVSpred_heatmap_facet' + str(facet_num) + '.png', 
-                    dpi=200, transparent=True, bbox_inches='tight')
+        # plt.savefig(path + name + '_actVSpred_heatmap_facet' + str(facet_num) + '.png', 
+        #             dpi=200, transparent=True, bbox_inches='tight')
     
         plt.close()
-        # plt.show()
+        plt.show()
     
     
     
@@ -366,11 +366,11 @@ def heatmap(save_dir, model, opg_type, name, atmos, opg):
     plt.grid(True)
     
     # save figure
-    plt.savefig(save_dir + name + '_actVSpred_heatmap.png', dpi=200, 
-                transparent=True, bbox_inches='tight')
+    # plt.savefig(save_dir + name + '_actVSpred_heatmap.png', dpi=200, 
+    #             transparent=True, bbox_inches='tight')
     
     plt.close()
-    # plt.show()
+    plt.show()
 
 
 
@@ -407,7 +407,7 @@ def training_loss(save_dir, history, loss_metric, opg_type):
     plt.grid(True)
     
     plt.close()
-    # plt.show()
+    plt.show()
     
     #plt.savefig("test_fig.png", dpi=300, transparent=True)
 
@@ -449,11 +449,11 @@ def training_validation_loss(save_dir, history, loss_metric, opg_type):
     plt.grid(True)
     
     # Save figure
-    plt.savefig(save_dir + 'train_vldtn_loss.png', dpi=300, transparent=True, 
-                bbox_inches='tight')
+    # plt.savefig(save_dir + 'train_vldtn_loss.png', dpi=300, transparent=True, 
+    #             bbox_inches='tight')
 
     plt.close()
-    # plt.show()
+    plt.show()
 
 
 

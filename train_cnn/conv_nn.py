@@ -1,11 +1,11 @@
 """ 
 Savanna Wolvin
 Created: Sep 27th, 2022
-Edited: Jun 1st, 2023
+Edited: Apr 30th, 2024
     
 
 ##### SUMMARY #####
-Script file holding the functions to create, train, and test a Convolutional 
+Script file holding the functions to create and train a Convolutional 
 Neural Network for cnn_regional_facet_MAIN.py
 
 ##### FUNCTION LIST ##########################################################
