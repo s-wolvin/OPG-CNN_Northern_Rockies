@@ -1,7 +1,7 @@
 """ 
 Savanna Wolvin
 Created: Nov 2nd, 2022
-Edited: Mar 1st, 2023
+Edited: Apr 30th, 2024
     
 
 ##### SUMMARY #####
@@ -9,8 +9,8 @@ Script file holding the functions to post-process the output of predicted
 values from standardized OPG or normalized OPG.
 
 ##### FUNCTION LIST ##########################################################
-    standardized_to_raw()
-    normalized_to_raw()
+    standardized_to_raw() - Convert Standardized OPG values back to the Actual values
+    normalized_to_raw() - Convert Normalized OPG values back to the Actual values
 
 
 

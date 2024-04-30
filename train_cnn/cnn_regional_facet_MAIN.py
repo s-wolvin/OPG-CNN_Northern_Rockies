@@ -1,17 +1,17 @@
 """ 
 Savanna Wolvin
 Created: Sep 9th, 2022
-Edited: Jun 1st, 2023
+Edited: Apr 30th, 2024
     
 
 ##### SUMMARY ################################################################
-This program is designed to pull the desired NCEP Reanalysis data or ECMEF ERA5
-data and regional facet OPG timeseries, annd then train a Convolutional Neural 
-Network to predict the OPG based on the chosen conditions.
+This program is designed to pull the desired pre-processed ECMEF ERA5 data and 
+regional facet OPG timeseries, annd then train a Convolutional Neural Network 
+to predict the OPG based on the chosen conditions.
 
 
 ##### INPUT ##################################################################
-data_directory (str)    - Directory to the Reanalysis data
+data_directory (str)    - Directory to the Atmospheric data
 data_types (dict)       - Dictionary Containing Desired Atmospheric Variables 
                             to Train the CNN Model. 4 Dimentional Data (time, 
                             lat, lon, pressure) Gets Pulled From the 
@@ -53,50 +53,14 @@ Total Precipitation  - "precip":    [sfc]
 10-m V-Winds         - "vwnd_10m":  [sfc]
 100-m V-Winds        - "vwnd_100m": [sfc]
 Mean Sea-Level Pres. - "mslp":      [sfc]
-
-
-
-
-NCEP/NCAR REANALYSIS-1
-#### 1 Dimentional, On-Facet Data:
-Precip. Total   - "prate":  [on-facet]
-Rel. Humidity   - "rhum":   [on-facet, crest level]
-U-Winds         - "uwnd":   [on-facet, crest level]
-V-Winds         - "vwnd":   [on-facet, crest level]
-W-Winds         - "omega":  [crest level]
-
-#### 2 Dimentional Data:
-Precip. Total   - "prate":  [sfc]
-IVT             - "IVT":    [all]
-Geop. Heights   - "hgt":    [1000,925,850,700,600,500,400,300,250,200]
-Rel. Humidity   - "rhum":   [sig995,1000,925,850,700,600,500,400,300]
-Spec. Humidity  - "shum":   [1000,925,850,700,600,500,400,300]
-Temperature     - "air":    [1000,925,850,700,600,500,400,300,250,200]
-U-Winds         - "uwnd":   [10m,1000,925,850,700,600,500,400,300,250,200]
-V-Winds         - "vwnd":   [10m,1000,925,850,700,600,500,400,300,250,200]
-W-Winds         - "omega":  [1000,925,850,700,600,500,400,300,250,200,150,100]
 ##############################################################################
-#  On Facet IVT, 700 winds, 850 temp, IVT, 500 GPH, 300 winds
-
-# Lucas Bohne
-# Mean Precipitation
-
-# Matt DeMaria
-# On-Facet Precipitation, 
-# Crest-Level Winds (U-Winds)? - figure 2.3
-# 700 hPa Relative Humidity for dry layers
-# Low-Level Winds
-# 850 hPa Temperatures
-# Surface RH
-# 300 hPa Winds
-
 
 years (list)            - Start and End Years to Train the CNN Model
 latitudes (list)        - Latitudes of the Domain for the Atmospheric 
                             Variables
 longitudes (list)       - Longitudes of the Domain for the Atmospheric 
                             Variables
-grid_spacing (float)    - Grid-Spacing of the Reanalysis Dataset
+grid_spacing (float)    - Grid-Spacing of the Atmosperic Dataset
 months (list)           - Specific Months to Train the CNN Model
 
 
@@ -132,18 +96,9 @@ save_model (bool)       - Boolean to Signal to the Program to Save the CNN
                             https://www.tensorflow.org/tutorials/keras/save_and_load#save_the_entire_model
 notes (str)             - Extra notes to add to model_info.txt
 
-
-##### OUTPUT #################################################################
-Saved model
-Save logistics
-
-
-
 """
 #%% Global Imports ###########################################################
 
-# import tensorflow as tf
-# import tensorflow.keras as tf_k
 import numpy as np
 from datetime import datetime, timedelta
 import os
@@ -164,7 +119,7 @@ import pandas as pd
 # print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
 ### Atmsopheric Variable data
-data_set  = "ERA5" # Reanalysis, ERA5
+data_set  = "ERA5" #ERA5
 # Variable Name: Pressure Levels
 
 ###################
@@ -181,7 +136,7 @@ data_types      = {"uwnd": ["700"],
 ### Domain Values
 years           = [1979, 2018]
 latitudes       = [25, 60] # [25, 60]
-longitudes      = [-150, -100] # Reanalysis [210, 260], ERA5 [-150, -100]
+longitudes      = [-150, -100] # ERA5 [-150, -100]
 months          = [12, 1, 2]
 
 ### CNN Model Values
@@ -249,15 +204,12 @@ def main():
     
     
     ##### Load in the Atmospheric Data #######################################
-    if data_set == "Reanalysis":
-        atmosphere = ld.create_reanalysis_dataset(data_years, data_lats, data_lons, 
-                                              data_types, data_directory, facet_opg, 
-                                              facet_directory, facet_opg.time)
-    elif data_set == "ERA5":
+    if data_set == "ERA5":
         atmosphere, atmos_mean, atmos_stdev = ld.create_era5_dataset(data_years, 
                                                  data_lats, data_lons, data_types, 
                                                  data_directory, facet_opg, 
                                                  facet_directory, facet_opg.time)
+    else: raise Exception("Dataset Not Listed")
     
     
     ##### Define Days for Training, Testing ##################################
@@ -441,39 +393,12 @@ def allocate_dataset_months(data_days):
 
 
 
-
-#%% Pick Random Days ##########################################################
-
-def allocate_dataset_days(data_days):
-    # calc number of days for each subset
-    num_days = len(data_days)
-    num_test_days = np.round(prct_test_days * num_days).astype('int')
-    num_vldtn_days = np.round(prct_vldtn_days * num_days).astype('int')
-    
-    # Shuffle the Days
-    data_days = rd.sample(set(data_days), len(data_days))
-    
-    # Pull the Test, Validation, and Train Days
-    test_days  = np.sort(data_days[0:num_test_days])
-    vldtn_days  = np.sort(data_days[num_test_days:(num_test_days+num_vldtn_days)])
-    train_days = np.sort(data_days[(num_test_days+num_vldtn_days):-1])
-    
-    return train_days, vldtn_days, test_days
-
-
-
-
 #%% Create the needed dimentional arrays: Lats, Lons, Time Domain ############
 
 def create_domain_arrays(data_set):
     print("Create Domain Arrays...")
     
-    if data_set == "Reanalysis":
-        data_directory = "/uufs/chpc.utah.edu/common/home/strong-group7/" + \
-            "savanna/reanalysis/ncep/daily/"
-        grid_spacing   = 2.5
-    
-    elif data_set == "ERA5":
+    if data_set == "ERA5":
         data_directory = "/uufs/chpc.utah.edu/common/home/strong-group7/" + \
             "savanna/ecmwf_era5/"
         grid_spacing   = 0.5

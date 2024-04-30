@@ -5,13 +5,14 @@ Edited: Jun 1st, 2023
     
 
 ##### SUMMARY #####
-Script file holding the functions to evaluate input variables for the 
+Script file holding functions to evaluate input variables for the 
 Convolutional Neural Network for cnn_regional_facet_MAIN.py
 
 ##### FUNCTION LIST ##########################################################
     plot_grad_cam() - Function to plot daily class activation maps and a 
                         histogram of OPG prediction error for the CNN
 
+    rename_title() - List of titles for the Grad-CAM plot
 
 """
 # %% Global Imports
@@ -203,7 +204,6 @@ def plot_grad_cam(save_dir, model, opg_type, name, atmos, opg):
                         me = np.mean(error)
 
                         # Plot Histogram
-
                         lower = np.sum(error < edges[0])
                         upper = np.sum(error > edges[1])
                         n, bins, patches = ax[row, col].hist(error,
@@ -323,13 +323,13 @@ def plot_grad_cam(save_dir, model, opg_type, name, atmos, opg):
             if os.path.exists(path) == False:
                 os.mkdir(path)
 
-            plt.savefig(path + df[0:10] + "_" + name + ".png", dpi=400, transparent=True,
-                        bbox_inches='tight')
+            # plt.savefig(path + df[0:10] + "_" + name + ".png", dpi=400, transparent=True,
+            #             bbox_inches='tight')
 
             plt.close()
             
             # Show Figure
-            # plt.show()
+            plt.show()
 
 
 
@@ -365,20 +365,5 @@ def rename_title(var_name):
             
     return title
     
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
