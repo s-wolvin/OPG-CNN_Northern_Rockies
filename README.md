@@ -49,7 +49,7 @@ conda env list
 
 
 
-# Folder Structure
+# Folder Structure:
     .
     ├── k-means_clustering_and_Grad-CAM    # Composite Grad-CAMs formulated from k-means clusters
     ├── plot_conv-pooling_layers           # Plotting feature maps of the CNN
