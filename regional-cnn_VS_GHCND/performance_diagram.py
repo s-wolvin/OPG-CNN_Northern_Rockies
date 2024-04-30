@@ -1,7 +1,7 @@
 """
 Savanna Wolvin
 Created: Apr 10th, 2024
-Edited: Apr 11th, 2024
+Edited: Apr 30th, 2024
 
 
 ##### SUMMARY #################################################################
@@ -9,12 +9,25 @@ This python script is designed to formulate the errors in predicted
 precipitation to the observed precipitation. Predicted precipitation is 
 formulated from the true OPG values, the predicted training OPG values, and the 
 predicted testing OPG values. The observed precipitation is the Global 
-Historical Climatological Network (GHCN) - Daily data.
+Historical Climatological Network (GHCN) - Daily data. The ERA5 at 0.5 degree 
+is also plotted, after interpreting to the observation location and adjusting 
+the precipitation value based on quantile mapping. 
+
+This script is edited from a script from Michael Pletcher - michael.pletcher@utah.edu, 
+originally described in this publication:
+
+    Roebber, P. J., 2009: Visualizing Multiple Measures of Forecast Quality. 
+    Wea. Forecasting, 24, 601608, https://doi.org/10.1175/2008WAF2222159.1.
+    
 
 ##### INPUT ###################################################################
-
-
-##### OUTPUT ##################################################################
+fi_dir      - Directory to the facet data
+opg_dir     - Directory to the OPG data
+model_dir   - Directory to the CNN model data
+model_name  - File name of the desired CNN model
+d_dir       - Directory to the ERA5 data
+years       - Years desired
+months      - Months desired
 
 
 """
@@ -96,6 +109,8 @@ yInt = mat_file['allOPGint']
 
 mat_file = sio.loadmat(fi_dir + 'station_count')  
 rm_opg   = mat_file['num'] < 3
+
+
 #%% Load Testing OPG Values and Precipitation from ERA5
 
 print('Load CNN OPG and ERA5 Precipitation...')
@@ -139,7 +154,7 @@ for dayx in tqdm(range(len(test_time))):
     ghcnd_day = test_time[dayx] == ghcnd_days.astype('datetime64')
     
     for fi in range(len(nr_facets)):
-        # same elevation average\
+        # same elevation average
         elevx = [np.max(elev[facets==nr_facets[fi]]), np.min(elev[facets==nr_facets[fi]])]
         xxx = (act_opg[ghcnd_day, nr_facets[fi]-1] * elevx) +  \
                                                 yInt[ghcnd_day, nr_facets[fi]-1]
@@ -335,22 +350,13 @@ for dx in test_time:
     
 
 #%%
-"""     IF there is a precipitation observation in the GHCN-Daily,
-        THEN there should be a downscaled precpitation observation from OPGs.
-        
-        IF the predicted downscaled precipitation is NaN,
-        THEN the predicted value should be set to zero """
+"""
+if there is not an OPG recorded, and the GHCND is positive, THEN there weren't enough stations, SO the precip value is NaN
+if there is     an OPG recorded, and the GHCND is positive, THEN the precip value was negative, SO the precip value is zero
+ """
 
 print("Should the predicted value be NaN or set to zero...")
 
-"""
-what is there are less than 3 stations on the facet? 
-then there wouldnt be an OPG observation to use
-then there wouldnt be an OPG to downscale
-therefore, I should compare station number, to the OPGs recorded
-if there is not an OPG recorded, and the GHCND is positive, THEN there weren't enough stations, SO the precip value is NaN
-if there is     an OPG recorded, and the GHCND is positive, THEN the precip value was negative, SO the precip value is zero
-"""   
 
 for assgn in range(len(ghcnd_assgnmnt_)):
     
@@ -373,17 +379,6 @@ for assgn in range(len(ghcnd_assgnmnt_)):
     where = np.where(((np.isnan(st_opg.T) & (ghcnd_pr_[:, assgn] > 0))),1,0)
     era5_pr_[where, assgn] = 0
     
-    
-    
-# opg_pr_[np.where(((ghcnd_pr_ > 0) & (np.isnan(opg_pr_.T))),1,0)] = 0
-
-# train_obs   = ghcnd_pr_[ghcnd_train==1, :]
-# cnn_pr_train_[np.where(((train_obs.T > 0) & (np.isnan(cnn_pr_train_))),1,0)] = 0
-
-# test_obs   = ghcnd_pr_[ghcnd_test==1, :]
-# cnn_pr_test_[np.where(((test_obs.T > 0) & (np.isnan(cnn_pr_test_))),1,0)] = 0
-
-# era5_pr_[np.where(((ghcnd_pr_ > 0) & (np.isnan(era5_pr_))),1,0)] = 0
 
 
 
@@ -405,10 +400,7 @@ def critical_success_index(a, b, c):
 """ Formulate validation statistics
 """
 
-percentiles = ['10','20','30','40','50','60','70','80','90']
 percentiles = ['5','25','50','75','95']
-# Empty DataFrame for identifying validation metrics
-#_data = pd.DataFrame()
 
 # Create DataFrames for statistics
 act_df = pd.DataFrame()
@@ -663,51 +655,6 @@ clabels = plt.clabel(b_contour, fmt="%1.1f", manual=[(0.5, 0.9), (0.6, 0.6),
                      fontsize = tick_label_sz, inline = True, 
                      use_clabeltext = True, inline_spacing = 10)
 
-### Havin fun with it
-# # actual
-# ax.plot(act_success_ratio[1:4], act_hit_rates[1:4], '-', color = 'gold', linewidth = 10, zorder = 1)
-# ax.plot(act_success_ratio[:2], act_hit_rates[:2], ':', color = 'gold', linewidth = 5, zorder = 1)
-# ax.plot(act_success_ratio[3:], act_hit_rates[3:], ':', color = 'gold', linewidth = 5, zorder = 1)
-# ax.scatter(act_success_ratio[1:4], act_hit_rates[1:4], color = 'gold',  s = [25*s, 50*s, 75*s], 
-#            edgecolor = 'k', linewidth = 2, zorder = 10)
-# ax.scatter(act_success_ratio[0], act_hit_rates[0], color = 'gold',  s = [15*s], 
-#            marker='X', edgecolor = 'k', linewidth = 2, zorder = 10)
-# ax.scatter(act_success_ratio[4], act_hit_rates[4], color = 'gold',  s = [95*s], 
-#            marker='X', edgecolor = 'k', linewidth = 2, zorder = 10)
-# # training
-# ax.plot(tra_success_ratio[1:4], tra_hit_rates[1:4], '-', color = 'dodgerblue', linewidth = 10, zorder = 1)
-# ax.plot(tra_success_ratio[:2], tra_hit_rates[:2], ':', color = 'dodgerblue', linewidth = 5, zorder = 1)
-# ax.plot(tra_success_ratio[3:], tra_hit_rates[3:], ':', color = 'dodgerblue', linewidth = 5, zorder = 1)
-# ax.scatter(tra_success_ratio[1:4], tra_hit_rates[1:4], color = 'dodgerblue',  s = [25*s, 50*s, 75*s], 
-#            edgecolor = 'k', linewidth = 2, zorder = 10)
-# ax.scatter(tra_success_ratio[0], tra_hit_rates[0], color = 'dodgerblue',  s = [15*s], 
-#            marker='X', edgecolor = 'k', linewidth = 2, zorder = 10)
-# ax.scatter(tra_success_ratio[4], tra_hit_rates[4], color = 'dodgerblue',  s = [95*s], 
-#            marker='X', edgecolor = 'k', linewidth = 2, zorder = 10)
-# # testing
-# ax.plot(tes_success_ratio[1:4], tes_hit_rates[1:4], '-', color = 'orangered', linewidth = 10, zorder = 1)
-# ax.plot(tes_success_ratio[:2], tes_hit_rates[:2], ':', color = 'orangered', linewidth = 5, zorder = 1)
-# ax.plot(tes_success_ratio[3:], tes_hit_rates[3:], ':', color = 'orangered', linewidth = 5, zorder = 1)
-# ax.scatter(tes_success_ratio[1:4], tes_hit_rates[1:4], color = 'orangered',  s = [25*s, 50*s, 75*s], 
-#            edgecolor = 'k', linewidth = 2, zorder = 10)
-# ax.scatter(tes_success_ratio[0], tes_hit_rates[0], color = 'orangered',  s = [15*s], 
-#            marker='X', edgecolor = 'k', linewidth = 2, zorder = 10)
-# ax.scatter(tes_success_ratio[4], tes_hit_rates[4], color = 'orangered',  s = [95*s], 
-#            marker='X', edgecolor = 'k', linewidth = 2, zorder = 10)
-# # ERA5
-# ax.plot(era_success_ratio[1:4], era_hit_rates[1:4], '-', color = 'lime', linewidth = 10, zorder = 1)
-# ax.plot(era_success_ratio[:2], era_hit_rates[:2], ':', color = 'lime', linewidth = 5, zorder = 1)
-# ax.plot(era_success_ratio[3:], era_hit_rates[3:], ':', color = 'lime', linewidth = 5, zorder = 1)
-# ax.scatter(era_success_ratio[1:4], era_hit_rates[1:4], color = 'lime',  s = [25*s, 50*s, 75*s], 
-#            edgecolor = 'k', linewidth = 2, zorder = 10)
-# ax.scatter(era_success_ratio[0], era_hit_rates[0], color = 'lime',  s = [15*s], 
-#            marker='X', edgecolor = 'k', linewidth = 2, zorder = 10)
-# ax.scatter(era_success_ratio[4], era_hit_rates[4], color = 'lime',  s = [95*s], 
-#            marker='X', edgecolor = 'k', linewidth = 2, zorder = 10)
-
-
-
-
 # actual
 act = ax.plot(act_success_ratio, act_hit_rates, '-', color = 'gold', linewidth = 6, zorder = 1)
 ax.scatter(act_success_ratio, act_hit_rates, color = 'gold',  s = [10*s, 25*s, 50*s, 75*s, 95*s], 
@@ -757,8 +704,8 @@ cbar.set_ticklabels(np.round(np.arange(0, 1.01, 0.1), 1))
 cbar.ax.tick_params(labelsize=tick_label_sz)
 
 path = model_dir + model_name + "/"
-plt.savefig(f"{path}performance_diagram.png", dpi=300, 
-              transparent=True, bbox_inches='tight')
+# plt.savefig(f"{path}performance_diagram.png", dpi=300, 
+#               transparent=True, bbox_inches='tight')
 
 plt.show()
 
@@ -828,22 +775,6 @@ lgnd_color = ax.legend(handles = legend_handles, labels = ['Actual OPG', 'Traini
 plt.setp(lgnd_color.get_title(),fontsize=tick_label_sz)
 
 
-# # Legend for dot sizes
-# legend_handles = [Line2D([],[],markersize=np.sqrt(10*sl),marker='.',markeredgecolor='k',markeredgewidth=2,color='lightgray',linestyle='None'),
-#                   Line2D([],[],markersize=np.sqrt(25*sl),marker='.',markeredgecolor='k',markeredgewidth=2,color='lightgray',linestyle='None'),
-#                   Line2D([],[],markersize=np.sqrt(50*sl),marker='.',markeredgecolor='k',markeredgewidth=2,color='lightgray',linestyle='None'),
-#                   Line2D([],[],markersize=np.sqrt(75*sl),marker='.',markeredgecolor='k',markeredgewidth=2,color='lightgray',linestyle='None'),
-#                   Line2D([],[],markersize=np.sqrt(95*sl),marker='.',markeredgecolor='k',markeredgewidth=2,color='lightgray',linestyle='None')]
-# lgnd2 = ax.legend(handles = legend_handles, 
-#                  labels = ['0.05', '0.25', '0.50', '0.75','0.95'], 
-#                  bbox_to_anchor=(1, -0.43),
-#                   title="Quantile Threshold:", loc = "lower right", 
-#                   prop = {'size': tick_label_sz}, markerscale = 4, ncol=1, framealpha=1,
-#                   alignment='left')
-# plt.setp(lgnd2.get_title(),fontsize=tick_label_sz)
-# plt.gca().add_artist(lgnd1)
-
-
 # labels
 ax.set_xlabel("Success Ratio (1 - FAR)", fontsize = axis_label_sz)
 ax.set_ylabel("Probability of Detection", fontsize = axis_label_sz)
@@ -865,32 +796,11 @@ xx = np.array([0.9, 0.7, 0.5, 0.3, 0.1])
 yy = np.array([0.1, 0.1, 0.1, 0.1, 0.1])
 y_lev = 1.6
 
-# lgnd.plot(xx, yy*y_lev, '-', color = 'gold', linewidth = 6, zorder = 1)
-# lgnd.scatter(xx, yy*y_lev, color = 'gold',  s = [10*s, 25*s, 50*s, 75*s, 95*s], 
-#             edgecolor = 'k', linewidth = 2, zorder = 10)
-
-# # training
-# lgnd.plot(xx, yy*y_lev*2, '-', color = 'dodgerblue', linewidth = 6, zorder = 1)
-# lgnd.scatter(xx, yy*y_lev*2, color = 'dodgerblue',  s = [10*s, 25*s, 50*s, 75*s, 95*s], 
-#             edgecolor = 'k', linewidth = 2, zorder = 10)
-
-# # testing
-# lgnd.plot(xx, yy*y_lev*3, '-', color = 'orangered', linewidth = 6, zorder = 1)
-# lgnd.scatter(xx, yy*y_lev*3, color = 'orangered',  s = [10*s, 25*s, 50*s, 75*s, 95*s], 
-#             edgecolor = 'k', linewidth = 2, zorder = 10)
 
 # ERA5
 lgnd.plot(xx, yy*y_lev*2, '-', color = [0.6, 0.6, 0.6], linewidth = 6, zorder = 1)
 lgnd.scatter(xx, yy*y_lev*2, color = [0.6, 0.6, 0.6],  s = [10*s, 25*s, 50*s, 75*s, 95*s], 
             edgecolor = 'k', linewidth = 2, zorder = 10)
-
-# add variable labels
-# lgnd.text(0.66, yy[0]*y_lev,   "Actual OPG",   va='center', fontsize=tick_label_sz)
-# lgnd.text(0.66, yy[0]*y_lev*2, "Training OPG", va='center', fontsize=tick_label_sz)
-# lgnd.text(0.66, yy[0]*y_lev*3, "Testing OPG",  va='center', fontsize=tick_label_sz)
-# lgnd.text(0.66, yy[0]*y_lev*4, "LI + QM ERA5", va='center', fontsize=tick_label_sz)
-# lgnd.text(0.66, yy[0]*y_lev*5, "Downscaled Precipitation", va='center', 
-#           ha='left', fontsize=tick_label_sz)
 
 
 # Quantile Labels
@@ -906,15 +816,11 @@ lgnd.set_ylim([0.12, 1.12])
 lgnd.set_xlim([0, 1.00])
 lgnd.set_xticks([])
 lgnd.set_yticks([])
-# lgnd.set_axis_off()
-
-
-# fig.tight_layout(pad=1.0)
 
 
 path = model_dir + model_name + "/"
-plt.savefig(f"{path}performance_diagram_lgnd.png", dpi=300, 
-              transparent=True, bbox_inches='tight')
+# plt.savefig(f"{path}performance_diagram_lgnd.png", dpi=300, 
+#               transparent=True, bbox_inches='tight')
 
 plt.show()
 
