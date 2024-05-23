@@ -1,11 +1,11 @@
 """
 Savanna Wolvin
 Created: May 15th, 2023
-Edited: Jun 7th, 2023
+Edited: May 23rd, 2024
 
 ##### SUMMARY ################################################################
 This script takes the OPG values from the specified region and formulates 
-K-means clusters in the goal of dividing the study domain into similar OPG 
+K-means clusters in the goal of dividing the study domain into subsets of OPG 
 events for analysis of the CNN.
 
 
@@ -38,7 +38,6 @@ from datetime import timedelta, datetime
 import pandas as pd
 from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
-from kneed import KneeLocator
 import cartopy.crs as ccrs
 import cartopy.feature as cfeat
 
@@ -47,14 +46,14 @@ import cartopy.feature as cfeat
 
 #%% Variable Presets
 
-opg_dir = "/uufs/chpc.utah.edu/common/home/strong-group7/savanna/cstar/opg/"
-fi_dir = "/uufs/chpc.utah.edu/common/home/strong-group7/savanna/cstar/facets/"
-kmeans_dir = "/uufs/chpc.utah.edu/common/home/strong-group7/savanna/cstar/regional_kmeans_clust/"
+opg_dir     = "/uufs/chpc.utah.edu/common/home/strong-group7/savanna/cstar/opg/"
+fi_dir      = "/uufs/chpc.utah.edu/common/home/strong-group7/savanna/cstar/facets/"
+kmeans_dir  = "/uufs/chpc.utah.edu/common/home/strong-group7/savanna/cstar/regional_kmeans_clust/"
 
 
 years           = [1979, 2018]
 months          = [12, 1, 2]
-num_station = 3
+num_station     = 3
 
 # CR - Coastal Ranges; NR - Northern Rockies; IPN - Inland Pacific Northwest; 
 # SW - Southwest; SR - Southern Rockies
@@ -174,7 +173,7 @@ elif opg_nans == 2: ##### Set All NaNs to the Average Value ##############
 
 #%% K-Means Clustering
 
-K = 50
+K = 15
 sse = np.zeros((K,1))
 
 for k in range(K):
@@ -185,45 +184,36 @@ for k in range(K):
 
 k_vals = np.expand_dims(np.arange(1,k+2), axis=1)
 
-kneedle = KneeLocator(np.squeeze(k_vals), np.squeeze(sse), curve="convex", direction="decreasing")
-
 
 
 #%% Plot SSE of Kmeans clustering
 
 plt.figure(figsize=(7,5))
-# kneedle.plot_knee()
-set_knee = 5
 
-plt.plot(range(1,51), np.squeeze(sse), c='blue')
-# plt.plot([kneedle.knee, kneedle.knee],[0, 10], c='red')
-plt.plot([set_knee, set_knee],[0, 10], c='red')
+plt.plot(range(1,K+1), np.squeeze(sse), c='blue')
 plt.xlabel("Number of Clusters")
 plt.ylabel("Sum of Squared Error")
-plt.legend(['K-Means Cluster\'s SSE', 'Identified Knee: K=11'])
-plt.xlim([0, 50])
+plt.xlim([0, K])
 plt.ylim([2.5,6])
 plt.grid(True)
 plt.rcParams.update({'font.size': 16})
 
-plt.savefig(f"{kmeans_dir}opg_{fi_region}_kmeans_sse.png", dpi=400, transparent=True, \
-            bbox_inches='tight')
+# plt.savefig(f"{kmeans_dir}opg_{fi_region}_kmeans_sse.png", dpi=400, transparent=True, \
+#             bbox_inches='tight')
 
 plt.show()
 
 
 
 
-#%% Plot the ten clusters of OPG values over the study domain
+#%% Plot the clusters of OPG values from set elbow over the study domain
 
-# set_knee = 5
+set_elbow = 5
 
-
-# kmeans = KMeans(kneedle.knee, n_init='auto', random_state=0)
-kmeans = KMeans(set_knee, n_init='auto', random_state=0)
+kmeans = KMeans(set_elbow, n_init='auto', random_state=0)
 kmeans_clust = kmeans.fit_predict(facet_opg.opg.values)
 
-for clust in range(set_knee):
+for clust in range(set_elbow):
     
     # Take Mean of OPGs by Cluster
     opgs = facet_opg.opg.values.copy()
@@ -271,8 +261,8 @@ for clust in range(set_knee):
 
     # Save and Show Figure
     print("Save Figure of Labeled Facets...")
-    plt.savefig(f"{kmeans_dir}kmeans_cluster_{str(clust+1)}_{fi_region}.png", dpi=400, transparent=True, \
-                bbox_inches='tight')
+    # plt.savefig(f"{kmeans_dir}kmeans_cluster_{str(clust+1)}_{fi_region}.png", dpi=400, transparent=True, \
+    #             bbox_inches='tight')
 
     plt.show()
     
@@ -288,11 +278,11 @@ df.to_csv(f"{kmeans_dir}kmeans_clusters_opg_{fi_region}")
     
 
 
-#%% Plot Scatter of the Mean and STD
+#%% Formulate the Mean and STD of each cluster
 
-opg_mean = np.zeros((kneedle.knee,1))
-opg_std = np.zeros((kneedle.knee,1))
-opg_count = np.zeros((kneedle.knee,1))
+opg_mean = np.zeros((set_elbow,1))
+opg_std = np.zeros((set_elbow,1))
+opg_count = np.zeros((set_elbow,1))
 
 for dx in range(len(kmeans_clust)):
     opg_count[kmeans_clust[dx]] += 1
@@ -303,38 +293,10 @@ for dx in range(len(kmeans_clust)):
 opg_mean /= opg_count
 opg_std /= opg_count
 
-#%% Plot Values of mean and std of opg on these days
 
-fig = plt.figure( figsize = (6,5))
+#%% define colormap
 
-ccmap = plt.get_cmap('nipy_spectral', 11)
-
-plt.scatter(opg_mean, opg_std, s=150, c=range(1,12), cmap=ccmap, edgecolors='black')
-
-plt.xlabel("OPG Mean")
-plt.ylabel("OPG Standard Deviation")
-
-plt.xlim([0,0.012])
-plt.ylim([0,0.012])
-
-plt.xticks([0.0, 0.005, 0.01])
-plt.yticks([0.0, 0.005, 0.01])
-
-plt.colorbar(ticks=range(1,12), label='Cluster Number')
-plt.clim(0.5,11.5)
-plt.grid(True)
-
-plt.savefig(f"{kmeans_dir}kmeans_clusters_{fi_region}_meanSTD.png", dpi=400, transparent=True, \
-            bbox_inches='tight')
-
-plt.show()
-
-
-
-#%% Plot Timeseries of Clusters
-
-ccmap = plt.get_cmap('nipy_spectral', 11)
-cccmap = [[0,	0,	0],
+cmapx = [[0,	0,	0],
         [0.5333,	0,	0.6],
         [0,	0,	0.8667],
         [0,	0.6,	0.8667],
@@ -346,26 +308,59 @@ cccmap = [[0,	0,	0],
         [0.8667,	0,	0],
         [0.8,	0.8,	0.8]]
 
+cmap = [ccmap[i] for i in np.array((np.round(np.linspace(0, len(cmapx)-1, num=set_elbow))), dtype='int')]
+
+
+ccmap = plt.get_cmap('nipy_spectral', set_elbow)
+
+#%% Plot Values of mean and std of opg on these days
+
+fig = plt.figure( figsize = (6,5))
+
+plt.scatter(opg_mean, opg_std, s=150, c=range(1,set_elbow+1), cmap=ccmap, edgecolors='black')
+
+plt.xlabel("OPG Mean")
+plt.ylabel("OPG Standard Deviation")
+
+plt.xlim([0,0.012])
+plt.ylim([0,0.012])
+
+plt.xticks([0.0, 0.005, 0.01])
+plt.yticks([0.0, 0.005, 0.01])
+
+plt.colorbar(ticks=range(1,set_elbow+1), label='Cluster Number')
+plt.clim(0.5,set_elbow+0.5)
+plt.grid(True)
+
+# plt.savefig(f"{kmeans_dir}kmeans_clusters_{fi_region}_meanSTD.png", dpi=400, transparent=True, \
+#             bbox_inches='tight')
+
+plt.show()
+
+
+
+#%% Plot Timeseries of Clusters
+
 plt.figure(figsize=(15,3))
 
-for clust in range(kneedle.knee):
+for clust in range(set_elbow):
     
     cx_idx = (kmeans_clust != clust)
     cx = kmeans_clust.copy().astype('float') + 1
     cx[cx_idx] = np.nan
     
-    plt.scatter(range(len(facet_opg.time.values)), cx, marker='+', linewidths=2, c=cccmap[clust])
+    plt.scatter(range(len(facet_opg.time.values)), cx, marker='+', linewidths=2, c=cmap[clust])
 
 
-plt.yticks([1,2,3,4,5,6,7,8,9,10,11])
+plt.yticks(np.arange(1,set_elbow+1))#[1,2,3,4,5,6,7,8,9,10,11])
 plt.ylabel('Cluster')
 plt.xlim([0,3579])
 plt.xlabel('Time')
 plt.xticks([0, 451, 903, 1354, 1805, 2256, 2708, 3159], 
            [1979, 1984, 1989, 1994, 1999, 2004, 2009, 2014])
 
-plt.savefig(f"{kmeans_dir}kmeans_clusters_{fi_region}_timesries.png", dpi=400, transparent=True, \
-            bbox_inches='tight')
+# plt.savefig(f"{kmeans_dir}kmeans_clusters_{fi_region}_timesries.png", dpi=400, transparent=True, \
+#             bbox_inches='tight')
 
 plt.show()
 
@@ -378,22 +373,9 @@ plt.show()
 
 dates = pd.to_datetime(facet_opg.time.values)
 
-ccmap = plt.get_cmap('nipy_spectral', 11)
-cccmap = [[0,	0,	0],
-        [0.5333,	0,	0.6],
-        [0,	0,	0.8667],
-        [0,	0.6,	0.8667],
-        [0,	0.6667,	0.5333],
-        [0,	0.7333,	0],
-        [1.3026e-15,	1,	0],
-        [0.9333,	0.9333,	0],
-        [1,	0.6,	0],
-        [0.8667,	0,	0],
-        [0.8,	0.8,	0.8]]
-
 plt.figure(figsize=(15,6))
 
-for clust in range(kneedle.knee):
+for clust in range(set_elbow):
     
     cx_idx = (kmeans_clust != clust)
     cx = kmeans_clust.copy().astype('float') + 1
@@ -404,9 +386,11 @@ for clust in range(kneedle.knee):
         idx = (dates > pd.to_datetime(f'{yx-1}1130', format='%Y%m%d')) & (dates < pd.to_datetime(f'{yx}0401', format='%Y%m%d'))
         counts.append(np.sum(~cx_idx[idx]))
         
-    plt.plot(d_years, counts, c=cccmap[clust])
+    plt.plot(d_years, counts, c=cmap[clust])
 
 
-plt.ylim((0,20))
+plt.ylabel("Year")
+plt.xlabel("Count of Events per Year")
+plt.grid(True)
 plt.show()
 
