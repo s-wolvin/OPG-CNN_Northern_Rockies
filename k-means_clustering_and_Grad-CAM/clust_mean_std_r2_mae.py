@@ -1,18 +1,27 @@
 """
 Savanna Wolvin
 Created: Jul 28th, 2023
-Edited: Jul 28th, 2023
+Edited: May 24th, 2024
 
 ##### Summary ################################################################
-
+This script is used to plot the mean OPGs, mean absolute error, and r2 of the 
+clustered OPG events for a region of the western United States.
 
 
 ##### Input ##################################################################
-
-
-
-##### Output #################################################################
-
+model_dir       - Directory to model runs
+model_name      - Directory to specific model run
+kmeans_dir      - Directory to saved clusters
+opg_dir         - Directory to the OPG value
+fi_dir          - Directory to the Facet data
+units           - OPG units
+years           - Years to pull
+months          - Months to pull
+fi_region       - Region of focus
+opg_nans        - How to Handle NaN OPGs
+opg_type        - Type of OPGs used in training
+prct_obs        - Percent of observations for a facet to be valid
+num_station     - Minimum number of stations for an OPG observation to be valid
 
 
 
@@ -23,17 +32,11 @@ import xarray as xr
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import colors
 from datetime import timedelta, datetime
 import scipy.io as sio
 import scipy.stats as sp_stats
 from matplotlib.ticker import MultipleLocator
 import os
-import sys
-sys.path.insert(1, '/uufs/chpc.utah.edu/common/home/u1324060/nclcmappy/')
-import nclcmaps as ncm
-
-
 
 
 #%% Preset Variables
@@ -47,14 +50,8 @@ opg_dir = "/uufs/chpc.utah.edu/common/home/strong-group7/savanna/cstar/opg/"
 
 fi_dir = "/uufs/chpc.utah.edu/common/home/strong-group7/savanna/cstar/facets/"
 
-units = "mm/m"
-min_val = -0.06
-max_val = 0.11
-max_heat = 1000
-
 years           = [1979, 2018]
 months          = [12, 1, 2]
-num_station = 3
 
 # CR - Coastal Ranges; NR - Northern Rockies; IPN - Inland Pacific Northwest; 
 # SW - Southwest; SR - Southern Rockies
@@ -74,9 +71,6 @@ num_station = 3
 # Load Output Stats
 output_test = xr.open_dataset(f"{model_dir}{model_name}/stats/Testing_output_stats.nc", engine='netcdf4')
 output_train = xr.open_dataset(f"{model_dir}{model_name}/stats/Training_output_stats.nc", engine='netcdf4')
-# actual = output.actual.values
-# predicted = output.predicted.values
-
 
 # Load Kmeans Data
 kmeans = pd.read_csv(f"{kmeans_dir}kmeans_clusters_opg_NR")
@@ -245,39 +239,27 @@ for clust in np.unique(kmeans['cluster'].values):
 
 
 
-
-#%% Bar plot
+#%% Plot presets
 
 lbl_sz = 16
 tt_sz = 18
 
-ccmap = plt.get_cmap('nipy_spectral', 11)
+act_color = 'black'
+tra_color = 'royalblue'
+tes_color = 'orangered'
+
+
+#%% Bar plot
 
 fig, ax = plt.subplots(layout='constrained', nrows=2, ncols=1, sharex=True, 
                        height_ratios=[0.75, 0.25], figsize=(6, 7))
 x_range = np.arange(1,6)
 
-# # Scatter plot of MRE
-# ax[2].scatter(x_range, mre[:,0], s=150, edgecolors='black', 
-#             fc='royalblue', label='Training')
-# ax[2].scatter(x_range, mre[:,1], s=150, edgecolors='black', 
-#             fc='orangered', label='Testing')
-# ax[2].set_ylim(0,3)
-# #ax[2].set_ylabel('MRE with Actual')
-# ax[2].set_title('c) MRE with Actual')
-# # ax[1].legend(loc='upper right', ncols=2)
-# ax[2].grid(True, which='major', color='dimgrey')
-# ax[2].set_axisbelow(True)
-# ax[2].yaxis.set_minor_locator(MultipleLocator(0.5))
-# ax[2].grid(True, which='both')
-
-
-
 # Scatter plot of r2
 ax[1].scatter(x_range, r2[:,0], s=150, edgecolors='black', 
-            fc='royalblue', label='Training')
+            fc=tra_color, label='Training')
 ax[1].scatter(x_range, r2[:,1], s=150, edgecolors='black', 
-            fc='orangered', label='Testing')
+            fc=tes_color, label='Testing')
 ax[1].set_ylim(0,1)
 #ax[1].set_ylabel('$\mathregular{r^2}$ with Actual')
 ax[1].set_title('b) $\mathregular{r^2}$ Between Actual and Predicted', size=tt_sz)
@@ -289,9 +271,9 @@ ax[1].grid(True, which='both')
 
 
 # Bar plots of mean OPG and MAE
-ax[0].bar(x_range-0.25, opg_mean[:,2], 0.25, label='Actual', fc='black')
-ax[0].bar(x_range, opg_mean[:,0], 0.25, label='Training', fc='royalblue')
-ax[0].bar(x_range+0.25, opg_mean[:,1], 0.25, label='Testing', fc='orangered')
+ax[0].bar(x_range-0.25, opg_mean[:,2], 0.25, label='Actual', fc=act_color)
+ax[0].bar(x_range, opg_mean[:,0], 0.25, label='Training', fc=tra_color)
+ax[0].bar(x_range+0.25, opg_mean[:,1], 0.25, label='Testing', fc=tes_color)
 
 ax[0].scatter(x_range, mae[:,0], s=150, edgecolors='black', 
            facecolor='None', label='MAE to Actual OPG')
@@ -320,150 +302,10 @@ path = model_dir + model_name + "/kmeans/"
 if os.path.exists(path) == False:
     os.mkdir(path)
 
-#plt.show()
-
-plt.savefig(f"{path}kmeans_cluster_stats_bar_scatter.png", dpi=300, 
-            transparent=True, bbox_inches='tight')
-
-
-
-
-
-
-
-#%% Try a plot out
-
-ccmap = plt.get_cmap('nipy_spectral', 11)
-cccmap = [[0,	0,	0],
-        [0.5333,	0,	0.6],
-        [0,	0,	0.8667],
-        [0,	0.6,	0.8667],
-        [0,	0.6667,	0.5333],
-        [0,	0.7333,	0],
-        [1.3026e-15,	1,	0],
-        [0.9333,	0.9333,	0],
-        [1,	0.6,	0],
-        [0.8667,	0,	0],
-        [0.8,	0.8,	0.8]]
-
-plt.plot(r2[0,:], mae[0,:]*1000, c=cccmap[0], linestyle=':', zorder=1)
-plt.plot(r2[1,:], mae[1,:]*1000, c=cccmap[1], linestyle=':', zorder=2)
-plt.plot(r2[2,:], mae[2,:]*1000, c=cccmap[2], linestyle=':', zorder=3)
-plt.plot(r2[3,:], mae[3,:]*1000, c=cccmap[3], linestyle=':', zorder=4)
-plt.plot(r2[4,:], mae[4,:]*1000, c=cccmap[4], linestyle=':', zorder=5)
-plt.plot(r2[5,:], mae[5,:]*1000, c=cccmap[5], linestyle=':', zorder=6)
-plt.plot(r2[6,:], mae[6,:]*1000, c=cccmap[6], linestyle=':', zorder=7)
-plt.plot(r2[7,:], mae[7,:]*1000, c=cccmap[7], linestyle=':', zorder=8)
-plt.plot(r2[8,:], mae[8,:]*1000, c=cccmap[8], linestyle=':', zorder=9)
-plt.plot(r2[9,:], mae[9,:]*1000, c=cccmap[9], linestyle=':', zorder=10)
-plt.plot(r2[10,:], mae[10,:]*1000, c=cccmap[10], linestyle=':', zorder=11)
-
-plt.scatter(r2[:,0], mae[:,0]*1000, s=100, c=range(1,12), cmap=ccmap, edgecolors='black', zorder=12)
-plt.scatter(r2[:,1], mae[:,1]*1000, s=100, c=range(1,12), marker='<', cmap=ccmap, edgecolors='black', zorder=13)
-
-plt.xlim([0,0.8])
-plt.ylim([0, 6])
-
-plt.xlabel('$\mathregular{r^2}$')
-plt.ylabel('MAE (mm/km)')
-
-plt.grid()
-
-plt.colorbar(ticks=range(1,12), label='Cluster Number', pad=0.01)
-plt.clim(0.5,11.5)
-
 plt.show()
 
-
-
-
-
-#%% Create stem plot
-
-fig, ax = plt.subplots(nrows=4, ncols=1, figsize=(3, 10))
-
-ax[0].scatter(range(1,12), opg_mean[:,0]*1000, c='blue')
-ax[0].scatter(range(1,12), opg_mean[:,1]*1000, c='darkorange')
-ax[0].scatter(range(1,12), opg_mean[:,2]*1000, c='black')
-ax[0].set_ylim([0,12.5])
-ax[0].grid()
-ax[0].set_title('OPG Mean')
-
-ax[1].scatter(range(1,12), opg_std[:,0]*1000, c='blue')
-ax[1].scatter(range(1,12), opg_std[:,1]*1000, c='darkorange')
-ax[1].scatter(range(1,12), opg_std[:,2]*1000, c='black')
-ax[1].set_ylim([0,12.5])
-ax[1].grid()
-ax[1].set_title('OPG Standard Deviation')
-
-
-ax[2].scatter(range(1,12), r2[:,0], c='blue')
-ax[2].scatter(range(1,12), r2[:,1], c='darkorange')
-ax[2].set_ylim([0,1])
-ax[2].grid()
-ax[2].set_title('r^2')
-
-ax[3].scatter(range(1,12), mae[:,1]*1000, c='darkorange')
-ax[3].scatter(range(1,12), mae[:,0]*1000, c='blue')
-ax[3].set_ylim([0,6])
-ax[3].grid()
-ax[3].set_title('MAE')
-
-plt.show()
-
-
-#%%
-
-
-    
-    # # create path to save
-    # path = model_dir + model_name + "/kmeans/"
-    # if os.path.exists(path) == False:
-    #     os.mkdir(path)
-
-    # plt.savefig(f"{path}kmeans_cluster_{str(clust+1)}_{atmos_subset}_actVSpred.png", dpi=200, 
-    #             transparent=True, bbox_inches='tight')
-    
-    # plt.show()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# plt.savefig(f"{path}kmeans_cluster_stats_bar_scatter.png", dpi=300, 
+#             transparent=True, bbox_inches='tight')
 
 
 
