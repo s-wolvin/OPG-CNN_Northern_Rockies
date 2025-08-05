@@ -2,11 +2,9 @@
 
 ## Evaluation of a Convolutional Neural Network to Predict Wintertime Orographic Precipitation Gradients of the CONUS Northern Rockies
 
-### Abstract: 
+### Project Description: 
 
-A convolutional neural network (CNN) is presented for downscaling winter precipitation in complex terrain based on orographic precipitation gradients (OPGs). Modeling OPGs on topographic facets allows for continuous spatial prediction on flexible grids, while conventional encoder-decoder architectures restrict prediction to the grid spacing of the trained output. Using the Northern Rockies of the contiguous United States (CONUS) as a test case, we divided the terrain into topographic facets based on regional terrain orientation, and used linear regression to quantify daily OPGs on each facet. Observed precipitation was based on gauge values from the Global Historical Climatology Network (GHCN)-Daily data set from 1979 to 2018. The CNN predicted daily wintertime OPGs using Pacific-North American meteorological fields from ECMWF ERA5 Reanalysis, and accounted for 34% of OPG variance with a mean absolute error of about 2.9 mm km<sup>-1</sup>. Compared to the GHCN-Daily, the overall mean precipitation error from OPG predictions was -0.6 mm, with an interquartile range of 1.7 mm. To evaluate the reasonableness of the variables and regions focused on by the CNN, we applied Gradient-weighted Class Activation Mapping (Grad-CAM) to _k_-means clusters of daily OPG. The Grad-CAM analysis indicated that the CNN focused on physically plausible indicators of OPG for each cluster, such as upstream coastal moisture transport.
-
-Support for this project was provided by the NOAA NWS Collaborative Science, Technology, and Applied Research (CSTAR) program. 
+A convolutional neural network (CNN) is presented for downscaling winter precipitation in complex terrain based on observed orographic precipitation gradients (OPGs). Modeling OPGs on topographic facets allows for continuous spatial prediction on flexible grids, while conventional encoder-decoder architectures restrict prediction to the grid spacing of the trained output. Using the Northern Rockies of the contiguous United States (CONUS) as a test case, we divided the terrain into topographic facets based on regional terrain orientation, and used linear regression to quantify daily OPGs on each facet. Observed precipitation was based on gauge values from the Global Historical Climatology Network (GHCN)-Daily data set from 1979 to 2018. The CNN predicted daily wintertime OPGs using Pacific-North American meteorological fields from ECMWF ERA5 Reanalysis, and accounted for 34% of OPG variance with a mean absolute error of about 2.9 mm km<sup>-1</sup>. Compared to the GHCN-Daily, the overall mean precipitation error from OPG predictions was -0.6 mm, with an interquartile range of 1.7 mm. To evaluate the reasonableness of the variables and regions focused on by the CNN, we applied Gradient-weighted Class Activation Mapping (Grad-CAM) to _k_-means clusters of daily OPG. The Grad-CAM analysis indicated that the CNN focused on physically plausible indicators of OPG for each cluster, such as upstream coastal moisture transport.
 
 ### Datasets:
 * [Bohne et al. 2020](https://doi.org/10.1175/JHM-D-19-0229.1) - Climatology of orographic precipitation gradients of the western United States, subsetted to the Northern Utah region of winter (DJF) events from 1979 to 2017.
@@ -49,7 +47,7 @@ conda env list
 
 
 
-# Folder Structure:
+## Folder Structure:
     .
     ├── k-means_clustering_and_Grad-CAM    # Composite Grad-CAMs formulated from k-means clusters
     ├── plot_conv-pooling_layers           # Plotting feature maps of the CNN
@@ -58,3 +56,8 @@ conda env list
     ├── opg_dataset                        # Original MATLAB files of labeled facets and OPGs
     ├── README.md                 
     └── environment.yml                    # Environment file
+
+## Acknowledgment
+
+Support for this project was provided by the NOAA NWS Collaborative Science, Technology, and Applied Research (CSTAR) program (Award: NA17NWS4680001), NASA High Mountain Asia Team (Award: 80NSSC20K1594), and the Wilkes Climate Center Seed Grant (Award: 003921). 
+
