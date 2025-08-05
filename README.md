@@ -14,7 +14,7 @@ In testing, the CNN accounted for 34% of OPG variance with a mean absolute error
 * [Bohne et al. 2020](https://doi.org/10.1175/JHM-D-19-0229.1) - Climatology of orographic precipitation gradients of the western United States, subsetted to the Northern Utah region of winter (DJF) events from 1979 to 2017.
 * [ECMWF ERA5](https://doi.org/10.1002/qj.3803) - Hourly data on pressure levels and single levels from 1940 to present, subsetted to latitudes [36°N, 45°N], longitudes [-119°W, -106°W], of winter (DJF) events from 1979 to 2017. This dataset was accessed through the publicly available Copernicus Climate Change Service (C3S) Climate Data Store (CDS). The ERA5 predictor variables were processed from 6-hourly data on [pressure levels](https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-pressure-levels?tab=overview) and 6-hourly data on [single levels](https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-single-levels?tab=form).
 
-# Getting Started:
+## Getting Started:
 ### 1. Fork the Repository to your GitHub
 
 Navigate to the top-right corner of the page, select Fork.
