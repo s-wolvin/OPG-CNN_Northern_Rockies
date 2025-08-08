@@ -10,6 +10,9 @@ This repository presents the code corresponding to a CNN test case using OPGs fr
 
 In testing, the CNN accounted for 34% of OPG variance with a mean absolute error of about 2.9 mm km<sup>-1</sup>. Compared to the GHCN-Daily, the overall mean precipitation error from OPG predictions was -0.6 mm, with an interquartile range of 1.7 mm. To evaluate the reasonableness of the variables and regions focused on by the CNN, we applied Gradient-weighted Class Activation Mapping (Grad-CAM) to _k_-means clusters of daily OPG. The Grad-CAM analysis indicated that the CNN focused on physically plausible indicators of OPG for each cluster, such as upstream coastal moisture transport towards the Northern Rockies.
 
+<a href="url"><img src="https://github.com/s-wolvin/OPG-CNN_Northern_Rockies/blob/main/opg_dataset/facet-orienations_ghcnd_northern-rockies.png" align="center" alt="Western CONUS Domain" width="450"></a>
+
+
 ### Datasets:
 * [Bohne et al. 2020](https://doi.org/10.1175/JHM-D-19-0229.1) - Climatology of orographic precipitation gradients of the western United States, subsetted to the Northern Utah region of winter (DJF) events from 1979 to 2017.
 * [ECMWF ERA5](https://doi.org/10.1002/qj.3803) - Hourly data on pressure levels and single levels from 1940 to present, subsetted to latitudes [36°N, 45°N], longitudes [-119°W, -106°W], of winter (DJF) events from 1979 to 2017. This dataset was accessed through the publicly available Copernicus Climate Change Service (C3S) Climate Data Store (CDS). The ERA5 predictor variables were processed from 6-hourly data on [pressure levels](https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-pressure-levels?tab=overview) and 6-hourly data on [single levels](https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-single-levels?tab=form).
