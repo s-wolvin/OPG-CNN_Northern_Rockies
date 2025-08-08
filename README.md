@@ -12,6 +12,7 @@ In testing, the CNN accounted for 34% of OPG variance with a mean absolute error
 
 <a href="url"><img src="https://github.com/s-wolvin/OPG-CNN_Northern_Rockies/blob/main/opg_dataset/facet-orienations_ghcnd_northern-rockies.jpeg" align="center" alt="Western CONUS Domain" width="450"></a>
 
+Fig. Western CONUS faceted terrain (shaded) and the GHCN-Daily station locations (pink) adapted from Bohne et al. (2020). The Northern Rockies region (blue box).
 
 ### Datasets:
 * [Bohne et al. 2020](https://doi.org/10.1175/JHM-D-19-0229.1) - Climatology of orographic precipitation gradients of the western United States, subsetted to the Northern Utah region of winter (DJF) events from 1979 to 2017.
@@ -35,17 +36,17 @@ git clone https://github.com/YOUR-USERNAME/OPG-CNN_Northern_Rockies
 ```
 
 ### 3. Create Your Virtual Environment From The YML Files
-The repository contains two environment files, in which the `cnn_gpu.yaml` file requires GPUs for the Tensorflow-GPU python library that trains and loads the CNN model, and _____.yaml does not use GPUs and is used for all scripts with plotting and analysis that do not import Tensorflow-GPU.
+The repository contains two environment files, in which the `cnn_gpu.yaml` file requires GPUs for the Tensorflow-GPU python library that trains and loads the CNN model, and cnn_analysis.yaml does not use GPUs and is used for all scripts with plotting and analysis that do not import Tensorflow-GPU.
 
 From your command prompt, go to the home directory.
 ```
 cd ~
 ```
-The following command creates the needed environment and downloads all required Python libraries in the case of `cnn_gpu.yml`. For the second environment, replace the .yml file name.
+The following command creates the needed environment and downloads all required Python libraries in the case of `cnn_gpu.yml`. For the second environment, replace the file name with `cnn_analysis.yml`.
 ```
 conda env create -f cnn_gpu.yml
 ```
-Once Anaconda sets up your environment, activate it using the activate function. For example, if using the `cnn_gpu.yaml`, the environment is named `opg_cnn`.
+Once Anaconda sets up your environment, activate it using the activate function. For example, if using the `cnn_gpu.yaml`, the environment is named `opg_cnn`, and if using the `cnn_analysis.yml`, the environment is named `cnn_analysis`.
 ```
 conda activate opg_cnn
 ```
