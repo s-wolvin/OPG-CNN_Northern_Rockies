@@ -1,18 +1,26 @@
 """
 Savanna Wolvin
 Created: Jul 28th, 2023
-Edited: Jul 28th, 2023
+Edited: Aug 8th, 2025
 
 ##### Summary ################################################################
-
+This script plots the mean OPGs and standard deviation of OPGs at all facets in 
+the desired region per k-means cluster grouping and plots values on a map.
 
 
 ##### Input ##################################################################
-
-
-
-##### Output #################################################################
-
+model_dir       - Directory to model runs
+model_name      - Directory to specific model run
+kmeans_dir      - Directory to saved clusters
+opg_dir         - Directory to the OPG value
+fi_dir          - Directory to the Facet data
+years           - Years to pull
+months          - Months to pull
+fi_region       - Region of focus
+opg_nans        - How to Handle NaN OPGs
+opg_type        - Type of OPGs used in training
+prct_obs        - Percent of observations for a facet to be valid
+num_station     - Minimum number of stations for an OPG observation to be valid
 
 
 
@@ -37,10 +45,10 @@ import nclcmaps as ncm
 
 #%% Preset Variables
 
-model_dir = "/uufs/chpc.utah.edu/common/home/strong-group7/savanna/cstar/regional_facet_cnn_FINAL/NR/"
-model_name = "2023-06-05_1443"
+model_dir = "/uufs/chpc.utah.edu/common/home/strong-group7/savanna/cstar/regional_facet_cnn_weighting/NR/"
+model_name = "2024-01-08_1113"
 
-atmos_subset = "training"
+# atmos_subset = "training"
 
 kmeans_dir = "/uufs/chpc.utah.edu/common/home/strong-group7/savanna/cstar/regional_kmeans_clust/"
 
@@ -68,11 +76,11 @@ num_station = 3
 #%% Load Data
 
 # Load Output Stats
-train_output = xr.open_dataset(f"{model_dir}{model_name}/stats/Training_output_stats.nc", engine='netcdf4')
-test_output = xr.open_dataset(f"{model_dir}{model_name}/stats/Testing_output_stats.nc", engine='netcdf4')
+# train_output = xr.open_dataset(f"{model_dir}{model_name}/stats/Training_output_stats.nc", engine='netcdf4')
+# test_output = xr.open_dataset(f"{model_dir}{model_name}/stats/Testing_output_stats.nc", engine='netcdf4')
 
 # Load Kmeans Data
-kmeans = pd.read_csv(f"{kmeans_dir}kmeans_clusters_opg_NR")
+kmeans = pd.read_csv(f"{kmeans_dir}kmeans_clusters_opg_NR_5_clusters")
 
 # Load OPG Data
 mat_file = sio.loadmat(fi_dir + 'lats')
@@ -265,17 +273,14 @@ if os.path.exists(path) == False:
     os.mkdir(path)
     
 # Save and Show Figure
-plt.savefig(f"{path}kmeans_clusters.png", dpi=300, 
-            transparent=True, bbox_inches='tight')
+# plt.savefig(f"{path}kmeans_clusters.png", dpi=300, 
+#             transparent=True, bbox_inches='tight')
 
 
 plt.show()
 
 
-
-#%% STD OF OPG
-
-#%% Formulate all the cluster means
+#%% Formulate all the cluster standard deviations
 
 opg_matrix = np.zeros((np.max(kmeans['cluster'].values)+1, np.shape(facets)[0], np.shape(facets)[1]))
 
@@ -286,7 +291,6 @@ for clust in np.unique(kmeans['cluster'].values):
     opgs[opgs==0] = np.nan
     #clust_opg = np.nanmean(opgs[kmeans['cluster']==clust,:], axis=0)
     clust_opg = np.nanstd(opgs[kmeans['cluster']==clust,:], axis=0)
-    
     
     # Pull Dates with that cluster
     clust_dates = kmeans['datetime'][kmeans['cluster']==clust]
@@ -301,9 +305,7 @@ for clust in np.unique(kmeans['cluster'].values):
     opg_matrix[clust,:,:] = opg_matrixx
 
 
-
-
-#% Plot all clusters
+#%% Plot all clusters
 
 y_axis = 2
 x_axis = 3
@@ -363,8 +365,8 @@ if os.path.exists(path) == False:
     os.mkdir(path)
     
 # Save and Show Figure
-plt.savefig(f"{path}kmeans_clusters_std.png", dpi=200, 
-            transparent=True, bbox_inches='tight')
+# plt.savefig(f"{path}kmeans_clusters_std.png", dpi=200, 
+#             transparent=True, bbox_inches='tight')
 
 
 plt.show()
