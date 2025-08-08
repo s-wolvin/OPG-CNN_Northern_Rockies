@@ -5,8 +5,8 @@ Edited: Jan 11th, 2024
 
 
 ##### Summary ################################################################
-This script loads in a CNN model and datasets and plots the convolutional 
-layers.
+This script loads in a CNN model and datasets and plots activations of the 
+convolutional and pooling layers.
 
 ##### Input ###################################################################
 model_dir       - Directory to CNN model
@@ -254,10 +254,10 @@ for dayx in range(0, atm_sz['time']):
             if os.path.exists(path) == False:
                 os.mkdir(path)
     
-            plt.savefig(f"{path}{df[0:10]}_{atmos_subset}_{lx}.png", dpi=dpix, 
-                        transparent=True, bbox_inches='tight')
+            # plt.savefig(f"{path}{df[0:10]}_{atmos_subset}_{lx}.png", dpi=dpix, 
+            #             transparent=True, bbox_inches='tight')
             
-            # plt.show()
+            plt.show()
             
             plt.close()
             
