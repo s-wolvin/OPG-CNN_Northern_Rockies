@@ -10,7 +10,7 @@ This repository presents the code corresponding to a CNN test case using OPGs fr
 
 In testing, the CNN accounted for 34% of OPG variance with a mean absolute error of about 2.9 mm km<sup>-1</sup>. Compared to the GHCN-Daily, the overall mean precipitation error from OPG predictions was -0.6 mm, with an interquartile range of 1.7 mm. To evaluate the reasonableness of the variables and regions focused on by the CNN, we applied Gradient-weighted Class Activation Mapping (Grad-CAM) to _k_-means clusters of daily OPG. The Grad-CAM analysis indicated that the CNN focused on physically plausible indicators of OPG for each cluster, such as upstream coastal moisture transport towards the Northern Rockies.
 
-<a href="url"><img src="https://github.com/s-wolvin/OPG-CNN_Northern_Rockies/blob/main/opg_dataset/facet-orienations_ghcnd_northern-rockies.png" align="center" alt="Western CONUS Domain" width="450"></a>
+<a href="url"><img src="https://github.com/s-wolvin/OPG-CNN_Northern_Rockies/blob/main/opg_dataset/facet-orienations_ghcnd_northern-rockies.jpeg" align="center" alt="Western CONUS Domain" width="450"></a>
 
 
 ### Datasets:
