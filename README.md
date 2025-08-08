@@ -57,10 +57,10 @@ conda env list
 ## Folder Structure:
     .
     ├── k-means_clustering_and_Grad-CAM    # Composite Grad-CAMs formulated from k-means clusters
-    ├── plot_conv-pooling_layers           # Plotting feature maps of the CNN
-    ├── regional-cnn_VS_GHCND              # Plot precipitation evaluation
-    ├── train_cnn                          # Create, train CNN, save output statistics, datasets, and CNN
     ├── opg_dataset                        # Original MATLAB files of labeled facets and OPGs
+    ├── plt_activation_layers              # Plotting activation maps of the CNN
+    ├── plt_eval_precip_prediction         # Plots for evaluating precipitation prediction
+    ├── train_cnn                          # Create, train CNN, save output statistics, datasets, and CNN
     ├── README.md                 
     └── environment.yml                    # Environment file
 
