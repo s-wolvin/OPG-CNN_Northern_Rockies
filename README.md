@@ -53,7 +53,7 @@ To check if the environment was installed correctly, run the following line.
 ```
 conda env list
 ```
-
+These environments include the Spyder IDE.
 
 
 ## Folder Structure:
