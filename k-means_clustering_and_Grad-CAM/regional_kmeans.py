@@ -308,7 +308,7 @@ cmapx = [[0,	0,	0],
         [0.8667,	0,	0],
         [0.8,	0.8,	0.8]]
 
-cmap = [ccmap[i] for i in np.array((np.round(np.linspace(0, len(cmapx)-1, num=set_elbow))), dtype='int')]
+cmap = [cmapx[i] for i in np.array((np.round(np.linspace(0, len(cmapx)-1, num=set_elbow))), dtype='int')]
 
 
 ccmap = plt.get_cmap('nipy_spectral', set_elbow)
