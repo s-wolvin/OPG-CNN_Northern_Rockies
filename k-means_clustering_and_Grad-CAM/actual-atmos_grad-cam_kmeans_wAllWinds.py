@@ -1,23 +1,34 @@
 """
 Savanna Wolvin
 Created: Aug 8th, 2023
-Edited: Nov 11th, 2023
+Edited: Aug 8th, 2025
 
 
 ##### Summary ################################################################
-This script take the kmeans clustered OPG events and plots the average Z-Score 
-of the Atmosphere in each cluster. Also creates similar plots with composite 
-Grad-CAM over the atmospheric cross sections. 
+This script plots composite Gradient-weighted Class Activation Maps (Grad-CAMs)
+based on the k-means clusters of OPG event types. It plots either Grad-CAMs of 
+the training or testing subset. The variables it plots are as what the CNN was 
+trained on: 
+    500 hPa geopotential height
+    700 hPa u-winds
+    IVT
+    700 hPa temperature
+    10-m v-winds
+    700 hPa vertical velocity
+    850 hPa specific humidity.
 
+However, the plots use the total winds at 700 hPa and at 10-m. In addition, the 
+CNN is trained on Z-Scored variables, here we plot the true values of IVT, 
+700 hPa winds, precipitation, and 10-m winds. Grad-CAMs are indicated using 
+stippling over the atmospheric variables.
+
+Additionally, daily Grad-CAMs are plotted after the clusters.
 
 ##### Input ##################################################################
 model_dir       - Directory to the CNN
 model_name      - Folder of the CNN
 atmos_subset    - Subset of the Atmospheric data to use
 kmeans_dir      - Directory to the K-Means analysis of OPG events
-
-
-##### Output #################################################################
 
 
 
@@ -45,7 +56,7 @@ import nclcmaps as ncm
 model_dir = "/uufs/chpc.utah.edu/common/home/strong-group7/savanna/cstar/regional_facet_cnn_weighting/NR/"
 model_name = "2024-01-08_1113"
 
-atmos_subset = "training"
+atmos_subset = "testing"
 
 kmeans_dir = "/uufs/chpc.utah.edu/common/home/strong-group7/savanna/cstar/regional_kmeans_clust/"
 
@@ -77,7 +88,7 @@ atmos_mean = xr.open_dataset(f"{model_dir}{model_name}/datasets/atmos_mean.nc", 
 atmos_std = xr.open_dataset(f"{model_dir}{model_name}/datasets/atmos_standardDeviation.nc", engine='netcdf4')
 
 # Load Kmeans Data
-kmeans = pd.read_csv(f"{kmeans_dir}kmeans_clusters_opg_NR")
+kmeans = pd.read_csv(f"{kmeans_dir}kmeans_clusters_opg_NR_5_clusters")
 
 
 #%% Plot Presets 
@@ -102,13 +113,11 @@ def atmos_cluster(clust):
     
     # Pull Dates with that cluster
     clust_dates = kmeans['datetime'][kmeans['cluster']==clust]
+    clust_dates = pd.to_datetime(clust_dates)
 
     # Pull Dates within the Cluster
     atmos_time = pd.to_datetime(atmos.time.values)
     atmos_time = atmos_time.drop(atmos_time.difference(clust_dates))
-
-    # Pull selected Atmos Dates and Take Time Mean
-    # atmos_clust_mean = (atmos * atmos_std) + atmos_mean
     
     atmos_clust_mean = atmos.sel(time=atmos_time).mean('time')
     
@@ -116,7 +125,41 @@ def atmos_cluster(clust):
     
     atmos_clust_mean = (atmos_clust_mean * atmos_std) + atmos_mean
     
-    return atmos_clust_mean, atmos.sel(time=atmos_time), atmos_time
+    # Additionally pull other winds
+    v700 = xr.Dataset()
+    u10m = xr.Dataset()
+
+    for yr in np.unique(atmos_time.year):
+        v700x = xr.open_dataset(f"/uufs/chpc.utah.edu/common/home/strong-group7/savanna/ecmwf_era5/western_CONUS/daily/press/era5_vwnd_{yr}_oct-apr_daily.nc")
+        v700x = v700x.sel(level = 700)
+        v700 = xr.merge([v700, v700x])
+    
+        u10mx = xr.open_dataset(f"/uufs/chpc.utah.edu/common/home/strong-group7/savanna/ecmwf_era5/western_CONUS/daily/sfc/era5_uwnd_10m_{yr}_oct-apr_daily.nc")
+        u10m = xr.merge([u10m, u10mx])
+    
+    v700 = v700.sel(time = atmos_time, latitude = atmos.lat.values, longitude = atmos.lon.values)
+    u10m = u10m.sel(time = atmos_time, latitude = atmos.lat.values, longitude = atmos.lon.values)
+    
+    v700 = v700.rename({'vwnd': 'vwnd700', 'latitude': 'lat','longitude': 'lon'})
+    u10m = u10m.rename({'uwnd_10m': 'uwnd_10msfc', 'latitude': 'lat','longitude': 'lon'})
+    atmos2 = xr.merge([v700, u10m])
+    
+    atmosx = atmos.sel(time=atmos_time)
+    
+    # Pull selected Atmos Dates and Take Time Mean
+    # atmos_clust_mean = (atmos * atmos_std) + atmos_mean
+    atmos_clust_mean = xr.merge([atmosx, atmos2])
+    
+    
+    atmos_clust_mean = atmosx.mean('time')
+    
+    # atmos_clust_mean.IVTsfc = (atmos_clust_mean.IVTsfc * atmos_std.IVTsfc) + atmos_mean.IVTsfc
+    
+    atmos_clust_mean = (atmos_clust_mean * atmos_std) + atmos_mean
+    
+    atmos_clust_mean = xr.merge([atmos_clust_mean, atmos2.mean('time')])
+
+    return atmos_clust_mean, atmosx, atmos_time, atmos2
 
 
 
@@ -208,29 +251,7 @@ def grad_cam(atmos_clust):
     heatmap = np.concatenate(heatmap, axis=3)  # combine all maps
     heatmap = np.max(heatmap, axis=3) # create max of all between facets per day
     
-    # xx = np.std(heatmap, axis = 0)
-    # plt.pcolormesh(xx, vmin=0, vmax=0.0002)
-    # plt.show()
-    
     heatmap = np.mean(heatmap, axis=0) # create mean of all days
-    
-    
-    
-    # print(np.std(heatmap))
-   
-    
-    # print(np.min(xx))
-    # print(np.max(xx))
-    
-    # xx = np.mean(heatmap, axis = 2)
-    # plt.pcolormesh(xx)
-    # plt.show()
-    
-    
-    # heatmap = np.max(heatmap, axis=2) # create max of all maps
-    #heatmap = np.percentile(heatmap, 95, axis=2) # create mean of all maps
-    # create percentile of all maps
-    # heatmap = np.percentile(heatmap, 90, axis=2)
 
     heatmap = heatmap / np.max(heatmap[:])  # Scale to max of 1
     heatmap[heatmap < 0] = 0  # Remove all the negative values
@@ -275,7 +296,7 @@ IVT_levs = np.arange(100, 500, 50)
 
 ANOM_levs = np.arange(-3, 3.25, 0.25)
 
-uwnd_scl = 250
+uwnd_scl = 145
 uwnd_col = [0.1, 0.1, 0.1]
 
 pr_cmap = ncm.cmapDiscrete('prcp_2', indexList=np.arange(1,12))
@@ -284,7 +305,7 @@ pr_levs = np.arange(0.5, 6.5, 0.5)
 temp_cmap = ncm.cmapDiscrete('BlRe', indexList=[24,24,24,24,24,24,24, 72,72,72,72,72,72])
 temp_levs = np.arange(-32, 40, 4)
 
-vwnd_scl = 45
+vwnd_scl = 60
 
 wwnd_cmap = ncm.cmap('BlueDarkRed18')
 wwnd_levs = np.array([0.5, 100])
@@ -307,7 +328,7 @@ gradcam_cmap = ncm.cmap('MPL_Greys')
 
 for clust in np.unique(kmeans['cluster'].values):
     
-    atmos_clust_mean, atmos_clust, atmos_time = atmos_cluster(clust)
+    atmos_clust_mean, atmos_clust, atmos_time, atmos2 = atmos_cluster(clust)
     
     grad_cam_clust = grad_cam(atmos_clust)
 
@@ -363,11 +384,15 @@ for clust in np.unique(kmeans['cluster'].values):
     
     IVT_ax = ax[0].contourf(loni, lati, IVTsfc, cmap=IVT_cmap, 
                     levels=IVT_levs, transform=datacrs, extend='max', zorder=2)
-    q = ax[0].quiver(loni[::7, ::10], lati[::7, ::10], atmos_clust_mean.uwnd700.values[::7, ::10], 
-                  np.zeros(np.shape(atmos_clust_mean.uwnd700.values))[::7, ::10], 
+    # q = ax[0].quiver(loni[::10, ::15], lati[::10, ::15], atmos_clust_mean.uwnd700.values[::10, ::15], 
+    #               np.zeros(np.shape(atmos_clust_mean.uwnd700.values))[::10, ::15], 
+    #               scale=uwnd_scl, pivot='mid', transform=datacrs, zorder=7,
+    #               color=uwnd_col, headwidth=6)
+    q = ax[0].quiver(loni[::10, ::15], lati[::10, ::15], atmos_clust_mean.uwnd700.values[::10, ::15], 
+                  atmos_clust_mean.vwnd700.values[::10, ::15], 
                   scale=uwnd_scl, pivot='mid', transform=datacrs, zorder=7,
                   color=uwnd_col, headwidth=6)
-    ax[0].quiverkey(q, X=0.29, Y=0.7, U=15, label='15 m s$^{-1}$', labelpos='E', 
+    ax[0].quiverkey(q, X=0.285, Y=0.7, U=15, label='15 m s$^{-1}$', labelpos='E', 
                     coordinates='figure', fontproperties={'size':lbl_sz})
     
     
@@ -389,10 +414,14 @@ for clust in np.unique(kmeans['cluster'].values):
     #                         transform=datacrs, hatches=[None, '..', 'oo','OO'], 
     #                         levels=[0, 0.25, 0.50, 0.75, 1.00])
     
-    if clust+1 == 2:
+    if clust+1 == 1:
         hatch = ax[0].contourf(h_lon, h_lat, grad_cam_clust, colors='none', zorder=8, 
-                                transform=datacrs, hatches=[None, None, '..', '..', 'oo'], 
-                                levels=[0, 0.2, 0.4, 0.6, 0.8, 1.00])
+                                transform=datacrs, hatches=[None, None, None, None, None, None, None, '..', '..', 'oo'], 
+                                levels=[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.00])
+    elif clust+1 == 2:
+        hatch = ax[0].contourf(h_lon, h_lat, grad_cam_clust, colors='none', zorder=8, 
+                                transform=datacrs, hatches=[None, None, None, None, None, None, '..', '..', '..', 'oo'], 
+                                levels=[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.00])
     elif clust+1 == 3:
         hatch = ax[0].contourf(h_lon, h_lat, grad_cam_clust, colors='none', zorder=8, 
                                 transform=datacrs, hatches=[None, None, None, None, None, None, None, None, '..', 'oo'], 
@@ -401,15 +430,19 @@ for clust in np.unique(kmeans['cluster'].values):
         hatch = ax[0].contourf(h_lon, h_lat, grad_cam_clust, colors='none', zorder=8, 
                                 transform=datacrs, hatches=[None, None, None, None, None, None, None, None, '..', 'oo'], 
                                 levels=[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.00])
+    elif clust+1 == 5:
+        hatch = ax[0].contourf(h_lon, h_lat, grad_cam_clust, colors='none', zorder=8, 
+                                transform=datacrs, hatches=[None, None, None, None, None, None, None, None, '..', 'oo'], 
+                                levels=[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.00])
     else:
         hatch = ax[0].contourf(h_lon, h_lat, grad_cam_clust, colors='none', zorder=8, 
-                                transform=datacrs, hatches=[None, None, None, '..', 'oo'], 
-                                levels=[0, 0.2, 0.4, 0.6, 0.8, 1.00])
+                                transform=datacrs, hatches=[None, None, None, None, None, None, None, None, '..', 'oo'], 
+                                levels=[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.00])
     
     
     
     ax[0].set_title('500 hPa Hgt. Anom. (contour)' + '\n' + 
-                    '700 hPa U-Winds (                   )', fontsize=lbl_sz)
+                    '700 hPa Winds (                     )', fontsize=lbl_sz)
     
     if atmos_subset == "training": 
         ax[0].text(-151, 42.5, 'Training', va='bottom', ha='center', 
@@ -440,11 +473,14 @@ for clust in np.unique(kmeans['cluster'].values):
     
     pr_ax = ax[1].contourf(loni, lati, precipsfc, cmap=pr_cmap, 
                     levels=pr_levs, transform=datacrs, extend='max', zorder=2)
-    q = ax[1].quiver(loni[::10, ::7], lati[::10, ::7], np.zeros(np.shape(atmos_clust_mean.vwnd_10msfc.values))[::10, ::7],
-                  atmos_clust_mean.vwnd_10msfc.values[::10, ::7], scale=vwnd_scl, 
+    # q = ax[1].quiver(loni[::15, ::10], lati[::15, ::10], np.zeros(np.shape(atmos_clust_mean.vwnd_10msfc.values))[::15, ::10],
+    #               atmos_clust_mean.vwnd_10msfc.values[::15, ::10], scale=vwnd_scl, 
+    #               transform=datacrs, zorder=7, headwidth=6)
+    q = ax[1].quiver(loni[::15, ::10], lati[::15, ::10], atmos_clust_mean.uwnd_10msfc.values[::15, ::10],
+                  atmos_clust_mean.vwnd_10msfc.values[::15, ::10], scale=vwnd_scl, 
                   transform=datacrs, zorder=7, headwidth=6)
     
-    ax[1].quiverkey(q, X=0.542, Y=0.7, U=2, label='2 m s$^{-1}$', labelpos='E', 
+    ax[1].quiverkey(q, X=0.54, Y=0.7, U=5, label='5 m s$^{-1}$', labelpos='E', 
                     coordinates='figure', fontproperties={'size':lbl_sz})
     
     # Colorbar
@@ -461,10 +497,14 @@ for clust in np.unique(kmeans['cluster'].values):
     ax[1].add_feature(states_provinces, zorder=5, edgecolor=border_color)
     ax[1].set_extent(extent)
     
-    if clust+1 == 2:
+    if clust+1 == 1:
         hatch = ax[1].contourf(h_lon, h_lat, grad_cam_clust, colors='none', zorder=8, 
-                                transform=datacrs, hatches=[None, None, '..', '..', 'oo'], 
-                                levels=[0, 0.2, 0.4, 0.6, 0.8, 1.00])
+                                transform=datacrs, hatches=[None, None, None, None, None, None, None, '..', '..', 'oo'], 
+                                levels=[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.00])
+    elif clust+1 == 2:
+        hatch = ax[1].contourf(h_lon, h_lat, grad_cam_clust, colors='none', zorder=8, 
+                                transform=datacrs, hatches=[None, None, None, None, None, None, '..', '..', '..', 'oo'], 
+                                levels=[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.00])
     elif clust+1 == 3:
         hatch = ax[1].contourf(h_lon, h_lat, grad_cam_clust, colors='none', zorder=8, 
                                 transform=datacrs, hatches=[None, None, None, None, None, None, None, None, '..', 'oo'], 
@@ -473,13 +513,17 @@ for clust in np.unique(kmeans['cluster'].values):
         hatch = ax[1].contourf(h_lon, h_lat, grad_cam_clust, colors='none', zorder=8, 
                                 transform=datacrs, hatches=[None, None, None, None, None, None, None, None, '..', 'oo'], 
                                 levels=[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.00])
+    elif clust+1 == 5:
+        hatch = ax[1].contourf(h_lon, h_lat, grad_cam_clust, colors='none', zorder=8, 
+                                transform=datacrs, hatches=[None, None, None, None, None, None, None, None, '..', 'oo'], 
+                                levels=[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.00])
     else:
         hatch = ax[1].contourf(h_lon, h_lat, grad_cam_clust, colors='none', zorder=8, 
-                                transform=datacrs, hatches=[None, None, None, '..', 'oo'], 
-                                levels=[0, 0.2, 0.4, 0.6, 0.8, 1.00])
+                                transform=datacrs, hatches=[None, None, None, None, None, None, None, None, '..', 'oo'], 
+                                levels=[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.00])
     
     ax[1].set_title('700 hPa Temp. Anom. (contour)' + '\n' + 
-                    '10-m V-Winds (                )', fontsize=lbl_sz)
+                    '10-m Winds (                  )', fontsize=lbl_sz)
     
     
     if atmos_subset == "training": 
@@ -512,10 +556,18 @@ for clust in np.unique(kmeans['cluster'].values):
     ax[2].add_feature(states_provinces, zorder=4, edgecolor=border_color)
     ax[2].set_extent(extent)
     
-    if clust+1 == 2:
+    # if clust+1 == 2:
+    #     hatch = ax[2].contourf(h_lon, h_lat, grad_cam_clust, colors='none', zorder=8, 
+    #                             transform=datacrs, hatches=[None, None, None, '..', 'oo'], 
+    #                             levels=[0, 0.2, 0.4, 0.6, 0.8, 1.00])
+    if clust+1 == 1:
         hatch = ax[2].contourf(h_lon, h_lat, grad_cam_clust, colors='none', zorder=8, 
-                                transform=datacrs, hatches=[None, None, '..', '..', 'oo'], 
-                                levels=[0, 0.2, 0.4, 0.6, 0.8, 1.00])
+                                transform=datacrs, hatches=[None, None, None, None, None, None, None, '..', '..', 'oo'], 
+                                levels=[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.00])
+    elif clust+1 == 2:
+        hatch = ax[2].contourf(h_lon, h_lat, grad_cam_clust, colors='none', zorder=8, 
+                                transform=datacrs, hatches=[None, None, None, None, None, None, '..', '..', '..', 'oo'], 
+                                levels=[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.00])
     elif clust+1 == 3:
         hatch = ax[2].contourf(h_lon, h_lat, grad_cam_clust, colors='none', zorder=8, 
                                 transform=datacrs, hatches=[None, None, None, None, None, None, None, None, '..', 'oo'], 
@@ -524,10 +576,14 @@ for clust in np.unique(kmeans['cluster'].values):
         hatch = ax[2].contourf(h_lon, h_lat, grad_cam_clust, colors='none', zorder=8, 
                                 transform=datacrs, hatches=[None, None, None, None, None, None, None, None, '..', 'oo'], 
                                 levels=[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.00])
+    elif clust+1 == 5:
+        hatch = ax[2].contourf(h_lon, h_lat, grad_cam_clust, colors='none', zorder=8, 
+                                transform=datacrs, hatches=[None, None, None, None, None, None, None, None, '..', 'oo'], 
+                                levels=[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.00])
     else:
         hatch = ax[2].contourf(h_lon, h_lat, grad_cam_clust, colors='none', zorder=8, 
-                                transform=datacrs, hatches=[None, None, None, '..', 'oo'], 
-                                levels=[0, 0.2, 0.4, 0.6, 0.8, 1.00])
+                                transform=datacrs, hatches=[None, None, None, None, None, None, None, None, '..', 'oo'], 
+                                levels=[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.00])
     
     ax[2].set_title('700 hPa W-Wind Anom.' + '\n' + 
                     '(contour, +0.5 $\sigma$)', fontsize=lbl_sz)
@@ -559,8 +615,8 @@ for clust in np.unique(kmeans['cluster'].values):
     if os.path.exists(path) == False:
         os.mkdir(path)
 
-    plt.savefig(f"{path}kmeans_cluster_{str(clust+1)}_{atmos_subset}_atmos_fixed.png", dpi=200, 
-                transparent=True, bbox_inches='tight')
+    # plt.savefig(f"{path}kmeans_cluster_{str(clust+1)}_{atmos_subset}_atmos_fixed_hatchGradient_wnds.png", dpi=200, 
+    #             transparent=True, bbox_inches='tight')
     
     plt.show()
     
@@ -604,9 +660,9 @@ gradcam_cmap = ncm.cmap('MPL_Greys')
 
 
 
-#%% Loop through each cluster and plot days for a chosen cluster
+#%% Loop through each day and plot daily Grad-CAM
 
-cluster_to_plot = [1,2,4]
+cluster_to_plot = [0,1,3]
 
 def grad_cam_daily(atmos_clust):
     
@@ -909,10 +965,10 @@ for clust in cluster_to_plot:
         if os.path.exists(path) == False:
             os.mkdir(path)
     
-        plt.savefig(f"{path}kmeans_cluster_{str(clust+1)}_{atmos_subset}_{ttx}.png", dpi=200, 
-                    transparent=True, bbox_inches='tight')
+        # plt.savefig(f"{path}kmeans_cluster_{str(clust+1)}_{atmos_subset}_{ttx}.png", dpi=200, 
+        #             transparent=True, bbox_inches='tight')
         
         # plt.show()
         
-        plt.clf()
+        plt.close()
 
