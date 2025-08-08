@@ -1,7 +1,7 @@
 """
 Savanna Wolvin
 Created: Jul 28th, 2023
-Edited: May 24th, 2024
+Edited: Aug 8th, 2025
 
 ##### Summary ################################################################
 This script is used to plot the mean OPGs, mean absolute error, and r2 of the 
@@ -73,7 +73,7 @@ output_test = xr.open_dataset(f"{model_dir}{model_name}/stats/Testing_output_sta
 output_train = xr.open_dataset(f"{model_dir}{model_name}/stats/Training_output_stats.nc", engine='netcdf4')
 
 # Load Kmeans Data
-kmeans = pd.read_csv(f"{kmeans_dir}kmeans_clusters_opg_NR")
+kmeans = pd.read_csv(f"{kmeans_dir}kmeans_clusters_opg_NR_5_clusters")
 
 # Load actual OPG
 mat_file = sio.loadmat(fi_dir + 'lats')
@@ -180,7 +180,7 @@ me          = np.zeros((np.max(kmeans['cluster'].values)+1,2))
 for clust in np.unique(kmeans['cluster'].values):
     
     # Pull Dates with that cluster
-    clust_dates = kmeans['datetime'][kmeans['cluster']==clust]
+    clust_dates = pd.to_datetime(kmeans['datetime'][kmeans['cluster']==clust])
     
     ## Pull training values ###################################################
     
@@ -282,7 +282,8 @@ ax[0].scatter(x_range+0.25, mae[:,1], s=150, edgecolors='black',
 
 #ax[0].set_ylabel('OPG (mm/km)')
 ax[0].set_title('a) Mean OPG (mm/m)', size=tt_sz)
-ax[0].set_xticks(x_range, fonstize=lbl_sz)
+# ax[0].set_xticks(x_range, fonstize=lbl_sz)
+ax[0].set_xticks(x_range)
 ax[1].set_xlabel('Regional Daily Winter OPG Event Clusters', size=lbl_sz)
 ax[0].legend(loc='upper right', ncols=1, fontsize=lbl_sz)
 ax[0].set_ylim(0,0.0105)
