@@ -1,7 +1,7 @@
 """
 Savanna Wolvin
 Created: May 15th, 2023
-Edited: May 23rd, 2024
+Edited: Aug. 8th, 2025
 
 ##### SUMMARY ################################################################
 This script takes the OPG values from the specified region and formulates 
@@ -24,8 +24,24 @@ num_station - Minimum number of stations for an OPG observation to be valid
 
 
 ##### OUTPUT #################################################################
+opg_{fi_region}_kmeans_sse.png
+    Sum of squared error by cluster number.
 
+kmeans_cluster_{str(clust+1)}_{fi_region}.png
+    Map of the mean OPG values at each facet in the Northern Rockies region 
+    saved individually per cluster.
 
+kmeans_clusters_opg_{fi_region}.csv
+    Save Dataframe that defines which cluster each day is grouped into, as well 
+    as the mean OPG value and standard deviaiton of OPG values.
+
+kmeans_clusters_{fi_region}_meanSTD.png
+    Plot of the mean OPGs versus the standard deiviation of OPG values by 
+    cluster group.
+
+kmeans_clusters_{fi_region}_timesries.png
+    Plot of the timeseries indicating which days are categorized into what 
+    cluster.
 
 """
 #%% Global Imports
@@ -274,7 +290,7 @@ df = pd.DataFrame((facet_opg.time.values), columns=['datetime'])
 df['cluster'] = kmeans_clust
 df['mean_opg'] = np.nanmean(facet_opg.opg.values, axis=1)
 df['std_opg'] = np.nanstd(facet_opg.opg.values, axis=1)
-df.to_csv(f"{kmeans_dir}kmeans_clusters_opg_{fi_region}")
+# df.to_csv(f"{kmeans_dir}kmeans_clusters_opg_{fi_region}")
     
 
 
