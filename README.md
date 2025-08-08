@@ -34,24 +34,26 @@ Identify a location where you would like to work in a development environment. U
 git clone https://github.com/YOUR-USERNAME/OPG-CNN_Northern_Rockies
 ```
 
-### 3. Create Your Virtual Environment From The YML File
+### 3. Create Your Virtual Environment From The YML Files
+The repository contains two environment files, in which the `cnn_gpu.yaml` file requires GPUs for the Tensorflow-GPU python library that trains and loads the CNN model, and _____.yaml does not use GPUs and is used for all scripts with plotting and analysis that do not import Tensorflow-GPU.
+
 From your command prompt, go to the home directory.
 ```
 cd ~
 ```
-The command below creates the needed environment and downloads all required Python libraries. The environment will be named `CNN_env`.
+The following command creates the needed environment and downloads all required Python libraries in the case of `cnn_gpu.yml`. For the second environment, replace the .yml file name.
 ```
-conda env create -f environment.yml
+conda env create -f cnn_gpu.yml
 ```
-Once Anaconda sets up your environment, activate it using the activate function.
+Once Anaconda sets up your environment, activate it using the activate function. For example, if using the `cnn_gpu.yaml`, the environment is named `opg_cnn`.
 ```
-conda activate CNN_env
+conda activate opg_cnn
 ```
 To check if the environment was installed correctly, run the following line.
 ```
 conda env list
 ```
-
+These environments include the Spyder IDE.
 
 
 ## Folder Structure:
