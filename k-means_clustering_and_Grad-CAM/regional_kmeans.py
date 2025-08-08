@@ -214,8 +214,8 @@ plt.ylim([2.5,6])
 plt.grid(True)
 plt.rcParams.update({'font.size': 16})
 
-# plt.savefig(f"{kmeans_dir}opg_{fi_region}_kmeans_sse.png", dpi=400, transparent=True, \
-#             bbox_inches='tight')
+plt.savefig(f"{kmeans_dir}opg_{fi_region}_kmeans_sse.png", dpi=400, transparent=True, \
+            bbox_inches='tight')
 
 plt.show()
 
@@ -277,8 +277,8 @@ for clust in range(set_elbow):
 
     # Save and Show Figure
     print("Save Figure of Labeled Facets...")
-    # plt.savefig(f"{kmeans_dir}kmeans_cluster_{str(clust+1)}_{fi_region}.png", dpi=400, transparent=True, \
-    #             bbox_inches='tight')
+    plt.savefig(f"{kmeans_dir}kmeans_cluster_{str(clust+1)}_{fi_region}.png", dpi=400, transparent=True, \
+                bbox_inches='tight')
 
     plt.show()
     
@@ -290,7 +290,7 @@ df = pd.DataFrame((facet_opg.time.values), columns=['datetime'])
 df['cluster'] = kmeans_clust
 df['mean_opg'] = np.nanmean(facet_opg.opg.values, axis=1)
 df['std_opg'] = np.nanstd(facet_opg.opg.values, axis=1)
-# df.to_csv(f"{kmeans_dir}kmeans_clusters_opg_{fi_region}")
+df.to_csv(f"{kmeans_dir}kmeans_clusters_opg_{fi_region}")
     
 
 
@@ -348,8 +348,8 @@ plt.colorbar(ticks=range(1,set_elbow+1), label='Cluster Number')
 plt.clim(0.5,set_elbow+0.5)
 plt.grid(True)
 
-# plt.savefig(f"{kmeans_dir}kmeans_clusters_{fi_region}_meanSTD.png", dpi=400, transparent=True, \
-#             bbox_inches='tight')
+plt.savefig(f"{kmeans_dir}kmeans_clusters_{fi_region}_meanSTD.png", dpi=400, transparent=True, \
+            bbox_inches='tight')
 
 plt.show()
 
@@ -375,8 +375,8 @@ plt.xlabel('Time')
 plt.xticks([0, 451, 903, 1354, 1805, 2256, 2708, 3159], 
            [1979, 1984, 1989, 1994, 1999, 2004, 2009, 2014])
 
-# plt.savefig(f"{kmeans_dir}kmeans_clusters_{fi_region}_timesries.png", dpi=400, transparent=True, \
-#             bbox_inches='tight')
+plt.savefig(f"{kmeans_dir}kmeans_clusters_{fi_region}_timesries.png", dpi=400, transparent=True, \
+            bbox_inches='tight')
 
 plt.show()
 
