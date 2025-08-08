@@ -4,7 +4,7 @@ Created: Aug 8th, 2023
 Edited: Aug 8th, 2025
 
 
-##### Summary ################################################################
+##### Summary ###############################################################
 This script plots composite Gradient-weighted Class Activation Maps (Grad-CAMs)
 based on the k-means clusters of OPG event types. It plots either Grad-CAMs of 
 the training or testing subset. The variables it plots are as what the CNN was 
@@ -22,7 +22,8 @@ CNN is trained on Z-Scored variables, here we plot the true values of IVT,
 700 hPa winds, precipitation, and 10-m winds. Grad-CAMs are indicated using 
 stippling over the atmospheric variables.
 
-Additionally, daily Grad-CAMs are plotted after the clusters.
+Additionally, daily Grad-CAMs are plotted after the composite Grad-CAMs by
+k-means cluster.
 
 ##### Input ##################################################################
 model_dir       - Directory to the CNN
