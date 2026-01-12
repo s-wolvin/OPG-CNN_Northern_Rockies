@@ -1,7 +1,7 @@
 """
 Savanna Wolvin
 Created: Apr 10th, 2024
-Edited: Jul 25th, 2025
+Edited: Dec 3rd, 2025
 
 
 ##### SUMMARY #################################################################
@@ -37,6 +37,7 @@ import scipy.io as sio
 import pandas as pd
 import xarray as xr
 import numpy as np
+import glob
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
@@ -45,6 +46,7 @@ from statsmodels.distributions.empirical_distribution import ECDF
 import sys
 sys.path.insert(1, '/uufs/chpc.utah.edu/common/home/u1324060/nclcmappy/')
 import warnings
+import os
 
 
 warnings.filterwarnings('ignore')
@@ -54,10 +56,15 @@ warnings.filterwarnings('ignore')
 fi_dir = "/uufs/chpc.utah.edu/common/home/strong-group7/savanna/cstar/facets/"
 opg_dir = "/uufs/chpc.utah.edu/common/home/strong-group7/savanna/cstar/opg/"
 
-model_dir = "/uufs/chpc.utah.edu/common/home/strong-group7/savanna/cstar/regional_facet_cnn_weighting/NR/"
-model_name = "2024-01-08_1113"
+# model_dir = "/uufs/chpc.utah.edu/common/home/strong-group7/savanna/cstar/regional_facet_cnn_weighting/NR/"
+# model_name = "2024-01-08_1113"
 
-d_dir = "/uufs/chpc.utah.edu/common/home/strong-group7/savanna/ecmwf_era5/western_CONUS/"
+model_dir = "/uufs/chpc.utah.edu/common/home/strong-group7/savanna/cstar/regional_facet_cnn_aies/NR/"
+model_name = "2025-12-01_1634"
+# model_name = "2025-12-02_1839"
+
+era5_dir = "/uufs/chpc.utah.edu/common/home/strong-group7/savanna/ecmwf_era5/western_CONUS/"
+gefs_dir = "/uufs/chpc.utah.edu/common/home/steenburgh-group12/savanna/noaa_reforecast/c00/3hrly/"
    
 years = [1979, 2018]
 months  = [12, 1, 2]
@@ -112,9 +119,9 @@ rm_opg   = mat_file['num'] < 3
 
 
 
-#%% Load Testing OPG Values and Precipitation from ERA5
+#%% Load Testing OPG Values and Precipitation from ERA5 and the GEFS
 
-print('Load CNN OPG and ERA5 Precipitation...')
+print('Load CNN OPG, ERA5 Precipitation, and GEFS Precipitation...')
 
 # Load Output Stats
 output = xr.open_dataset(f"{model_dir}{model_name}/stats/Testing_output_stats.nc", engine='netcdf4')
@@ -129,17 +136,32 @@ train_time = output.time.values
 # Create time dataset
 ghcnd_days = np.arange(datetime(years[0],1,1), datetime(years[1],4,1), timedelta(days=1)).astype(datetime)
 
-# Load precipitation
+# Load ERA5 precipitation
 era5 = xr.Dataset()
 for data_yearsX in tqdm(np.arange(years[0], years[1]+1)): # loop through each year 
     # Access the NC File and Convert Dataset to an Xarray
     ncfile = xr.open_dataset(
-        d_dir + "daily/sfc/era5_precip_" + str(data_yearsX) + "_oct-apr_daily.nc")
+        f"{era5_dir}daily/sfc/era5_precip_{str(data_yearsX)}_oct-apr_daily.nc")
     
     # Save Atmospheric Variable
     era5 = xr.merge([era5, ncfile])
 
+# Load GEFS precipitation
+gefs = []
+for data_yearsX in tqdm(np.arange(years[0], years[1]+1)):
+    # Check for directory
+    if os.path.exists(f"{gefs_dir}{str(data_yearsX)}/"):
+        files = glob.glob(f"{gefs_dir}{str(data_yearsX)}/gefs_c00_apcp_sfc_*")
+        
+        for file in files:
+            ncfile = xr.open_dataset(file)
+            ncfile = ncfile.isel(step = np.arange(8)).sum(dim = 'step')
+            
+            # Save Atmospheric Variable
+            gefs.append(ncfile)
 
+gefs = xr.concat(gefs, dim="time")
+            
 
 #%% Formulate Mean Precipitation on the facets
 
@@ -198,9 +220,26 @@ for timex in tqdm(range(len(train_time))):
         opg_yInt_train[timex, fi] = era5_mean_pr_train[timex ,fi] - \
                 (train_opg[timex ,fi] * mean_elev)
 
-                
+              
+#%% Formulate y-Intercept for persistence testing
 
-        
+print('Formulate y-Intercept for Persistence Testing...')
+
+opg_yInt_prstnce = np.zeros(np.shape(test_opg))
+
+persistence_opg = np.zeros(np.shape(test_opg))*np.nan
+persistence_opg[1:, :] = test_opg[:-1, :]
+
+persistence_opg[(pd.to_datetime(test_time).month == 12) & (pd.to_datetime(test_time).day == 1), :] = np.nan
+
+# Test
+for timex in tqdm(range(len(test_time))):
+    for fi in range(len(nr_facets)):
+        mean_elev = np.mean([np.max(elev[facets==nr_facets[fi]]), np.min(elev[facets==nr_facets[fi]])])
+        opg_yInt_prstnce[timex, fi] = era5_mean_pr_test[timex ,fi] - \
+                (persistence_opg[timex ,fi] * mean_elev)
+
+
 #%% Calculate precipitation
 
 print('Calculate Precipitation at Stations...')
@@ -210,6 +249,9 @@ opg_pr[:,:] = np.nan
   
 cnn_pr_test = np.zeros((len(ghcnd_elev), len(test_time)))
 cnn_pr_test[:,:] = np.nan
+
+cnn_pr_prstnce = np.zeros((len(ghcnd_elev), len(test_time)))
+cnn_pr_prstnce[:,:] = np.nan
 
 cnn_pr_train = np.zeros((len(ghcnd_elev), len(train_time)))
 cnn_pr_train[:,:] = np.nan
@@ -227,6 +269,12 @@ for fi in range(len(nr_facets)):
     for stx in range(len(ghcnd_elev)):
         if int(ghcnd_assgnmnt[stx]) == nr_facets[fi]:
             cnn_pr_test[stx, :] = (test_opg[:, fi] * ghcnd_elev[stx]) + opg_yInt_test[:, fi]
+            
+# persistence OPG for testing subset
+for fi in range(len(nr_facets)):
+    for stx in range(len(ghcnd_elev)):
+        if int(ghcnd_assgnmnt[stx]) == nr_facets[fi]:
+            cnn_pr_prstnce[stx, :] = (persistence_opg[:, fi] * ghcnd_elev[stx]) + opg_yInt_prstnce[:, fi]
                 
 # Train
 for fi in range(len(nr_facets)):
@@ -254,6 +302,7 @@ ghcnd_assgnmnt_ = ghcnd_assgnmnt[idx==1,:]
 opg_pr_         = opg_pr[idx==1, :]
 cnn_pr_train_   = cnn_pr_train[idx==1, :]
 cnn_pr_test_    = cnn_pr_test[idx==1, :]
+cnn_pr_prstnce_ = cnn_pr_prstnce[idx==1, :]
 
 
 
@@ -315,6 +364,44 @@ for stx in tqdm(range(np.shape(ghcnd_latlon_)[0])):
             era5_pr_[dayx, stx] = value # save value
 
 
+#%% Formulate daily precip at each station from the GEFS
+
+print("Linearly interpolate GEFS precip...")
+
+# create array
+gefs_pr = np.zeros((np.shape(ghcnd_days)[0], np.shape(ghcnd_latlon_)[0]))
+
+# linearly interpolate
+for stx in tqdm(range(np.shape(ghcnd_latlon_)[0])):
+    xx = gefs.interp(latitude=ghcnd_latlon_[stx,0],
+                     longitude=ghcnd_latlon_[stx,1]+360)
+    xx = xx.isel(time=xx.time.isin(ghcnd_days.astype('datetime64')))
+    sx = len(xx['time'].values)
+    gefs_pr[(np.shape(ghcnd_days)[0]-sx):, stx] = xx['apcp_sfc'].values
+
+
+# convert meters to milimeters
+# gefs_pr = gefs_pr * 1000
+
+
+#%% Quantile Mapping of the GEFS precipitation to the observations
+
+print("Quantile mapping...")
+
+# new empty array
+gefs_pr_ = np.zeros(np.shape(gefs_pr))
+
+# Loop through each station
+for stx in tqdm(range(np.shape(ghcnd_latlon_)[0])):
+    gefs_cdf = ECDF(gefs_pr[gefs_pr[:, stx] != 0, stx]) # create CDF function
+    
+    # loop through each day
+    for dayx in range(np.shape(gefs_pr)[0]):
+        if gefs_pr[dayx, stx] != 0: # if there is an era5 obs
+            quant = gefs_cdf(gefs_pr[dayx, stx]) # determine quantile
+            value = np.nanquantile(ghcnd_pr_[ghcnd_pr_[:,stx] != 0.0, stx], quant) # pull value at quantile of obs
+            gefs_pr_[dayx, stx] = value # save value
+
 
 #%% set opg that are zero to nan
 
@@ -324,15 +411,18 @@ print("Process zeros and NaNs...")
 opg_pr_[opg_pr_ < 0] = 0
 cnn_pr_test_[cnn_pr_test_ < 0] = 0
 cnn_pr_train_[cnn_pr_train_ < 0] = 0
+cnn_pr_prstnce_[cnn_pr_prstnce_ < 0] = 0
 era5_pr_[era5_pr_ < 0.001] = 0
+gefs_pr_[gefs_pr_ < 0.001] = 0
 
 # If the value is zero, set to NaN
 # We don't know if it was because of no-precipitation or no-observations
 opg_pr_[opg_pr_ == 0] = np.nan
 cnn_pr_test_[cnn_pr_test_ == 0] = np.nan
 cnn_pr_train_[cnn_pr_train_ == 0] = np.nan
+cnn_pr_prstnce_[cnn_pr_prstnce_ == 0] = np.nan
 era5_pr_[era5_pr_ == 0] = np.nan
-
+gefs_pr_[gefs_pr_ == 0] = np.nan
 
 
 #%%
@@ -385,9 +475,17 @@ for assgn in range(len(ghcnd_assgnmnt_)):
     where = np.where(((np.isnan(st_opg[ghcnd_test==1]) & (ghcnd_pr_[ghcnd_test==1, assgn] > 0))),1,0)
     cnn_pr_test_[assgn, where] = 0
     
+    # process testing opgs with persistence
+    where = np.where(((np.isnan(st_opg[ghcnd_test==1]) & (ghcnd_pr_[ghcnd_test==1, assgn] > 0))),1,0)
+    cnn_pr_prstnce_[assgn, where] = 0
+    
     # process era5
     where = np.where(((np.isnan(st_opg.T) & (ghcnd_pr_[:, assgn] > 0))),1,0)
     era5_pr_[where, assgn] = 0
+    
+    # process gefs
+    where = np.where(((np.isnan(st_opg.T) & (ghcnd_pr_[:, assgn] > 0))),1,0)
+    gefs_pr_[where, assgn] = 0
     
     
     
@@ -417,12 +515,19 @@ def critical_success_index(a, b, c):
     return a / (a + b + c)
 
 
+#%%
+
+path = model_dir + model_name + "/contour_success_index_2/"
+if os.path.exists(path) == False:
+    os.mkdir(path)
+    
+    
 #%% 
 """ Formulate validation statistics
 """
 
-percentiles = ['10','20','30','40','50','60','70','80','90']
-percentiles = ['5','25','50','75','95']
+# percentiles = ['10','20','30','40','50','60','70','80','90']
+percentiles = ['50','75','95']
 # Empty DataFrame for identifying validation metrics
 #_data = pd.DataFrame()
 
@@ -436,11 +541,17 @@ tra_df['percentiles'] = percentiles
 tes_df = pd.DataFrame()
 tes_df['percentiles'] = percentiles
 
+prs_df = pd.DataFrame()
+prs_df['percentiles'] = percentiles
+
 era_df = pd.DataFrame()
 era_df['percentiles'] = percentiles
 
+gfs_df = pd.DataFrame()
+gfs_df['percentiles'] = percentiles
+
 thres_df = pd.DataFrame()
-thres_df['type'] = ["Act OPG","Train OPG","Test OPG","ERA OPG"]
+thres_df['type'] = ["Act OPG","Train OPG","Test OPG", "Persistence OPG","ERA OPG", "GFS OPG"]
 
 # Calculate validation statistics relative to observed snowfall percentiles
 for percentile in percentiles:
@@ -487,7 +598,7 @@ for percentile in percentiles:
         act_df.loc[act_df['percentiles'] == percentile, str(stx+1) + '_pr_event_size_by_prct'] = fcst_threshold
         act_df.loc[act_df['percentiles'] == percentile, str(stx+1) + 'obs_pr_event_size_by_prct'] = obs_threshold
         
-        thres_df[thres_df['type'] == "Act OPG", str(stx+1) + '_obs_thres'] = obs_threshold
+        thres_df[str(stx+1) + '_obs_thres'] = obs_threshold
         
 ######### Train OPG VS GHCND #####################################
 
@@ -529,7 +640,7 @@ for percentile in percentiles:
         tra_df.loc[tra_df['percentiles'] == percentile, str(stx+1) + '_pr_event_size_by_prct'] = fcst_threshold
         tra_df.loc[tra_df['percentiles'] == percentile, str(stx+1) + 'obs_pr_event_size_by_prct'] = obs_threshold      
 
-        thres_df[thres_df['type'] == "Train OPG", str(stx+1) + '_obs_thres'] = obs_threshold
+        thres_df.loc[1, str(stx+1) + '_obs_thres'] = obs_threshold
 
 ######### Test OPG VS GHCND ####################################
         
@@ -571,7 +682,49 @@ for percentile in percentiles:
         tes_df.loc[tes_df['percentiles'] == percentile, str(stx+1) + '_pr_event_size_by_prct'] = fcst_threshold
         tes_df.loc[tes_df['percentiles'] == percentile, str(stx+1) + '_obs_pr_event_size_by_prct'] = obs_threshold        
           
-        thres_df[thres_df['type'] == "Test OPG", str(stx+1) + '_obs_thres'] = obs_threshold
+        thres_df.loc[2, str(stx+1) + '_obs_thres'] = obs_threshold
+        
+######### Test OPG Persistence VS GHCND ####################################
+        
+        obs_col   = ghcnd_pr_[ghcnd_test==1, stx]
+        obs_col[obs_col == 0] = np.nan
+        model_col = cnn_pr_prstnce_[stx, :]
+        
+        # Calculate thresholds
+        fcst_threshold = np.nanpercentile(model_col, np.array(percentile, dtype = float))
+        obs_threshold  = np.nanpercentile(obs_col, np.array(percentile, dtype = float))
+
+        # Identify hits
+        hits = np.where(((model_col >= obs_threshold) & (obs_col >= obs_threshold)), 1, np.nan)
+        hits = np.sum(hits == 1)
+
+        # Identify false alarms
+        false_alarm = np.where(((model_col >= obs_threshold) & (obs_col <= obs_threshold)), 1, np.nan)
+        false_alarm = np.sum(false_alarm == 1)
+
+        # Identify misses
+        misses = np.where(((model_col <= obs_threshold) & (obs_col >= obs_threshold)), 1, np.nan)
+        misses = np.sum(misses == 1)
+        
+        # Calculate validation metrics
+        hit_rates    = hit_rate(hits, misses)
+        false_alarms = false_alarm_ratio(hits, false_alarm)
+        csis         = critical_success_index(hits, false_alarm, misses)
+        sr           = 1 - false_alarms
+        
+        # Calculate a few statistics based on percentiles
+        prs_df.loc[prs_df['percentiles'] == percentile, str(stx+1) + '_#_pr_obs_exceeding_prct']   = np.sum(obs_col   >= obs_threshold)
+        prs_df.loc[prs_df['percentiles'] == percentile, str(stx+1) + '_#_pr_fcsts_exceeding_prct'] = np.sum(model_col >= obs_threshold)
+        prs_df.loc[prs_df['percentiles'] == percentile, str(stx+1) + '_hit_rate_prct']             = hit_rates
+        prs_df.loc[prs_df['percentiles'] == percentile, str(stx+1) + '_fa_ratio']                  = false_alarms
+        prs_df.loc[prs_df['percentiles'] == percentile, str(stx+1) + '_critial_success_idx']       = csis
+        prs_df.loc[prs_df['percentiles'] == percentile, str(stx+1) + '_success_ratio']             = sr
+
+        # Calculate event sizes based on percentiles for observed and forecasted snowfall events
+        prs_df.loc[prs_df['percentiles'] == percentile, str(stx+1) + '_pr_event_size_by_prct'] = fcst_threshold
+        prs_df.loc[prs_df['percentiles'] == percentile, str(stx+1) + '_obs_pr_event_size_by_prct'] = obs_threshold        
+          
+        thres_df.loc[3, str(stx+1) + '_obs_thres'] = obs_threshold
         
 ######### QM ERA5 VS GHCND ####################################
         
@@ -613,8 +766,76 @@ for percentile in percentiles:
         era_df.loc[era_df['percentiles'] == percentile, str(stx+1) + '_pr_event_size_by_prct'] = fcst_threshold
         era_df.loc[era_df['percentiles'] == percentile, str(stx+1) + '_obs_pr_event_size_by_prct'] = obs_threshold  
         
-        thres_df[thres_df['type'] == "ERA OPG", str(stx+1) + '_obs_thres'] = obs_threshold
+        thres_df.loc[4, str(stx+1) + '_obs_thres'] = obs_threshold
         
+######### QM GEFS VS GHCND ####################################
+        
+        obs_col   = ghcnd_pr_[:, stx]
+        obs_col[obs_col == 0] = np.nan
+        model_col = gefs_pr_[:, stx]
+        
+        # Calculate thresholds
+        fcst_threshold = np.nanpercentile(model_col, np.array(percentile, dtype = float))
+        obs_threshold  = np.nanpercentile(obs_col, np.array(percentile, dtype = float))
+
+        # Identify hits
+        hits = np.where(((model_col >= obs_threshold) & (obs_col >= obs_threshold)), 1, np.nan)
+        hits = np.sum(hits == 1)
+
+        # Identify false alarms
+        false_alarm = np.where(((model_col >= obs_threshold) & (obs_col <= obs_threshold)), 1, np.nan)
+        false_alarm = np.sum(false_alarm == 1)
+
+        # Identify misses
+        misses = np.where(((model_col <= obs_threshold) & (obs_col >= obs_threshold)), 1, np.nan)
+        misses = np.sum(misses == 1)
+        
+        # Calculate validation metrics
+        hit_rates    = hit_rate(hits, misses)
+        false_alarms = false_alarm_ratio(hits, false_alarm)
+        csis         = critical_success_index(hits, false_alarm, misses)
+        sr           = 1 - false_alarms
+        
+        # Calculate a few statistics based on percentiles
+        gfs_df.loc[gfs_df['percentiles'] == percentile, str(stx+1) + '_#_pr_obs_exceeding_prct']   = np.sum(obs_col   >= obs_threshold)
+        gfs_df.loc[gfs_df['percentiles'] == percentile, str(stx+1) + '_#_pr_fcsts_exceeding_prct'] = np.sum(model_col >= obs_threshold)
+        gfs_df.loc[gfs_df['percentiles'] == percentile, str(stx+1) + '_hit_rate_prct']             = hit_rates
+        gfs_df.loc[gfs_df['percentiles'] == percentile, str(stx+1) + '_fa_ratio']                  = false_alarms
+        gfs_df.loc[gfs_df['percentiles'] == percentile, str(stx+1) + '_critial_success_idx']       = csis
+        gfs_df.loc[gfs_df['percentiles'] == percentile, str(stx+1) + '_success_ratio']             = sr
+
+        # Calculate event sizes based on percentiles for observed and forecasted snowfall events
+        gfs_df.loc[gfs_df['percentiles'] == percentile, str(stx+1) + '_pr_event_size_by_prct'] = fcst_threshold
+        gfs_df.loc[gfs_df['percentiles'] == percentile, str(stx+1) + '_obs_pr_event_size_by_prct'] = obs_threshold  
+        
+        thres_df.loc[5, str(stx+1) + '_obs_thres'] = obs_threshold
+        
+    thres_df.to_csv(f'{path}pr_thres_{percentile}th_percentile.csv')
+
+
+
+#%% Save data
+
+act_df.to_csv(f'{path}actual_success.csv')
+tra_df.to_csv(f'{path}training_success.csv')
+tes_df.to_csv(f'{path}testing_success.csv')
+prs_df.to_csv(f'{path}persistence_success.csv')
+era_df.to_csv(f'{path}era5_success.csv')
+gfs_df.to_csv(f'{path}gefs_success.csv')
+thres_df.to_csv(f'{path}thresholds.csv')
+
+
+#%% load in data
+
+act_df = pd.read_csv(f'{path}actual_success.csv')
+tra_df = pd.read_csv(f'{path}training_success.csv')
+tes_df = pd.read_csv(f'{path}testing_success.csv')
+prs_df = pd.read_csv(f'{path}persistence_success.csv')
+era_df = pd.read_csv(f'{path}era5_success.csv')
+gfs_df = pd.read_csv(f'{path}gefs_success.csv')
+thres_df = pd.read_csv(f'{path}pr_thres_{percentile}th_percentile.csv')
+
+
 
 #%% formulate metrics for each possibility
 
@@ -633,18 +854,29 @@ tes_success_ratio = tes_df.filter(like='_success_ratio', axis=1)
 tes_hit_rates     = tes_hit_rates.mean(axis=1)
 tes_success_ratio = tes_success_ratio.mean(axis=1)
 
+prs_hit_rates     = prs_df.filter(like='_hit_rate_prct', axis=1)
+prs_success_ratio = prs_df.filter(like='_success_ratio', axis=1)
+prs_hit_rates     = prs_hit_rates.mean(axis=1)
+prs_success_ratio = prs_success_ratio.mean(axis=1)
+
 era_hit_rates     = era_df.filter(like='_hit_rate_prct', axis=1)
 era_success_ratio = era_df.filter(like='_success_ratio', axis=1)
 era_hit_rates     = era_hit_rates.mean(axis=1)
 era_success_ratio = era_success_ratio.mean(axis=1)
 
+gfs_hit_rates     = gfs_df.filter(like='_hit_rate_prct', axis=1)
+gfs_success_ratio = gfs_df.filter(like='_success_ratio', axis=1)
+gfs_hit_rates     = gfs_hit_rates.mean(axis=1)
+gfs_success_ratio = gfs_success_ratio.mean(axis=1)
 
 #%% CSI
 
 act_csi = 1 / ((1/act_hit_rates)+(1/act_success_ratio)-1)
 tra_csi = 1 / ((1/tra_hit_rates)+(1/tra_success_ratio)-1)
 tes_csi = 1 / ((1/tes_hit_rates)+(1/tes_success_ratio)-1)
+prs_csi = 1 / ((1/prs_hit_rates)+(1/prs_success_ratio)-1)
 era_csi = 1 / ((1/era_hit_rates)+(1/era_success_ratio)-1)
+gfs_csi = 1 / ((1/gfs_hit_rates)+(1/gfs_success_ratio)-1)
 
 
 
@@ -713,7 +945,7 @@ plt.setp(lgnd.get_title(),fontsize=tick_label_sz)
 
 
 # labels
-ax.set_xlabel("Success Ratio (1 - FAR)", fontsize = axis_label_sz)
+ax.set_xlabel("Success Ratio (1 - False Alarm Rate)", fontsize = axis_label_sz)
 ax.set_ylabel("Probability of Detection", fontsize = axis_label_sz)
 ax.set_xticks(np.arange(0, 1.1, 0.1))
 ax.set_yticks(np.arange(0, 1.1, 0.1))
@@ -799,22 +1031,6 @@ lgnd_color = ax.legend(handles = legend_handles, labels = ['Actual OPG', 'Traini
 plt.setp(lgnd_color.get_title(),fontsize=tick_label_sz)
 
 
-# # Legend for dot sizes
-# legend_handles = [Line2D([],[],markersize=np.sqrt(10*sl),marker='.',markeredgecolor='k',markeredgewidth=2,color='lightgray',linestyle='None'),
-#                   Line2D([],[],markersize=np.sqrt(25*sl),marker='.',markeredgecolor='k',markeredgewidth=2,color='lightgray',linestyle='None'),
-#                   Line2D([],[],markersize=np.sqrt(50*sl),marker='.',markeredgecolor='k',markeredgewidth=2,color='lightgray',linestyle='None'),
-#                   Line2D([],[],markersize=np.sqrt(75*sl),marker='.',markeredgecolor='k',markeredgewidth=2,color='lightgray',linestyle='None'),
-#                   Line2D([],[],markersize=np.sqrt(95*sl),marker='.',markeredgecolor='k',markeredgewidth=2,color='lightgray',linestyle='None')]
-# lgnd2 = ax.legend(handles = legend_handles, 
-#                  labels = ['0.05', '0.25', '0.50', '0.75','0.95'], 
-#                  bbox_to_anchor=(1, -0.43),
-#                   title="Quantile Threshold:", loc = "lower right", 
-#                   prop = {'size': tick_label_sz}, markerscale = 4, ncol=1, framealpha=1,
-#                   alignment='left')
-# plt.setp(lgnd2.get_title(),fontsize=tick_label_sz)
-# plt.gca().add_artist(lgnd1)
-
-
 # labels
 ax.set_xlabel("Success Ratio (1 - FAR)", fontsize = axis_label_sz)
 ax.set_ylabel("Probability of Detection", fontsize = axis_label_sz)
@@ -836,32 +1052,11 @@ xx = np.array([0.9, 0.7, 0.5, 0.3, 0.1])
 yy = np.array([0.1, 0.1, 0.1, 0.1, 0.1])
 y_lev = 1.6
 
-# lgnd.plot(xx, yy*y_lev, '-', color = 'gold', linewidth = 6, zorder = 1)
-# lgnd.scatter(xx, yy*y_lev, color = 'gold',  s = [10*s, 25*s, 50*s, 75*s, 95*s], 
-#             edgecolor = 'k', linewidth = 2, zorder = 10)
-
-# # training
-# lgnd.plot(xx, yy*y_lev*2, '-', color = 'dodgerblue', linewidth = 6, zorder = 1)
-# lgnd.scatter(xx, yy*y_lev*2, color = 'dodgerblue',  s = [10*s, 25*s, 50*s, 75*s, 95*s], 
-#             edgecolor = 'k', linewidth = 2, zorder = 10)
-
-# # testing
-# lgnd.plot(xx, yy*y_lev*3, '-', color = 'orangered', linewidth = 6, zorder = 1)
-# lgnd.scatter(xx, yy*y_lev*3, color = 'orangered',  s = [10*s, 25*s, 50*s, 75*s, 95*s], 
-#             edgecolor = 'k', linewidth = 2, zorder = 10)
 
 # ERA5
 lgnd.plot(xx, yy*y_lev*2, '-', color = [0.6, 0.6, 0.6], linewidth = 6, zorder = 1)
 lgnd.scatter(xx, yy*y_lev*2, color = [0.6, 0.6, 0.6],  s = [10*s, 25*s, 50*s, 75*s, 95*s], 
             edgecolor = 'k', linewidth = 2, zorder = 10)
-
-# add variable labels
-# lgnd.text(0.66, yy[0]*y_lev,   "Actual OPG",   va='center', fontsize=tick_label_sz)
-# lgnd.text(0.66, yy[0]*y_lev*2, "Training OPG", va='center', fontsize=tick_label_sz)
-# lgnd.text(0.66, yy[0]*y_lev*3, "Testing OPG",  va='center', fontsize=tick_label_sz)
-# lgnd.text(0.66, yy[0]*y_lev*4, "LI + QM ERA5", va='center', fontsize=tick_label_sz)
-# lgnd.text(0.66, yy[0]*y_lev*5, "Downscaled Precipitation", va='center', 
-#           ha='left', fontsize=tick_label_sz)
 
 
 # Quantile Labels
@@ -915,33 +1110,39 @@ csi_contourr = ax.contour(sr_g, pod_g, csi, np.arange(0, 1.01, 0.1),
 b_contour   = ax.contour(sr_g, pod_g, bias, [0.25, 0.5, 1, 2, 4], colors="k", 
                           linestyles="dashed")
 clabels = ax.clabel(b_contour, fmt="%1.1f", manual=[(0.5, 0.9), (0.6, 0.6), 
-                                                     (0.9, 0.4), (0.3, 0.9), 
-                                                     (0.95, 0.2)], 
+                                                     (0.5, 0.2), (0.3, 0.9), 
+                                                     (0.5, 0.1)], 
                      fontsize = tick_label_sz, inline = True, 
                      use_clabeltext = True, inline_spacing = 10)
 
 
 # actual
-act = ax.plot(act_success_ratio[2:], act_hit_rates[2:], '-', color = 'gold', linewidth = 6, zorder = 1)
-ax.scatter(act_success_ratio[2:], act_hit_rates[2:], color = 'gold',  
+act = ax.plot(act_success_ratio, act_hit_rates, '-', color = 'gold', linewidth = 6, zorder = 1)
+ax.scatter(act_success_ratio, act_hit_rates, color = 'gold',  
            s = [10*s, 45*s, 95*s], 
            edgecolor = 'k', linewidth = 2, zorder = 10)
 
 # training
-tra = ax.plot(tra_success_ratio[2:], tra_hit_rates[2:], '-', color = 'dodgerblue', linewidth = 6, zorder = 1)
-ax.scatter(tra_success_ratio[2:], tra_hit_rates[2:], color = 'dodgerblue',  
+tra = ax.plot(tra_success_ratio, tra_hit_rates, '-', color = 'dodgerblue', linewidth = 6, zorder = 1)
+ax.scatter(tra_success_ratio, tra_hit_rates, color = 'dodgerblue',  
            s = [10*s, 45*s, 95*s], 
            edgecolor = 'k', linewidth = 2, zorder = 10)
 
 # testing
-tes = ax.plot(tes_success_ratio[2:], tes_hit_rates[2:], '-', color = 'orangered', linewidth = 6, zorder = 1)
-ax.scatter(tes_success_ratio[2:], tes_hit_rates[2:], color = 'orangered',  
+tes = ax.plot(tes_success_ratio, tes_hit_rates, '-', color = 'red', linewidth = 6, zorder = 1)
+ax.scatter(tes_success_ratio, tes_hit_rates, color = 'red',  
            s = [10*s, 45*s, 95*s], 
            edgecolor = 'k', linewidth = 2, zorder = 10)
 
 # ERA5
-era = ax.plot(era_success_ratio[2:], era_hit_rates[2:], '-', color = 'lime', linewidth = 6, zorder = 1)
-ax.scatter(era_success_ratio[2:], era_hit_rates[2:], color = 'lime',  
+era = ax.plot(era_success_ratio, era_hit_rates, '-', color = 'lime', linewidth = 6, zorder = 1)
+ax.scatter(era_success_ratio, era_hit_rates, color = 'lime',  
+           s = [10*s, 45*s, 95*s], 
+           edgecolor = 'k', linewidth = 2, zorder = 10)
+
+# GEFS
+gfs = ax.plot(gfs_success_ratio, gfs_hit_rates, '-', color = 'mediumorchid', linewidth = 6, zorder = 1)
+ax.scatter(gfs_success_ratio, gfs_hit_rates, color = 'mediumorchid',  
            s = [10*s, 45*s, 95*s], 
            edgecolor = 'k', linewidth = 2, zorder = 10)
 
@@ -950,36 +1151,21 @@ ax.scatter(era_success_ratio[2:], era_hit_rates[2:], color = 'lime',
 legend_handles = [Line2D([], [], marker='.', markeredgecolor = 'k', markeredgewidth=2, color='gold', linestyle='-', linewidth=5),
           Line2D([], [], marker='.', markeredgecolor = 'k', markeredgewidth=2, color='dodgerblue', linestyle='-', linewidth=5),
           Line2D([], [], marker='.', markeredgecolor = 'k', markeredgewidth=2, color='orangered', linestyle='-', linewidth=5),
-          Line2D([], [], marker='.', markeredgecolor = 'k', markeredgewidth=2, color='lime', linestyle='-', linewidth=5)]
-lgnd_color = ax.legend(handles = legend_handles, labels = ['Actual OPG', 'Training OPG', 'Testing OPG', 'LI + QM ERA5'], 
-          title="Downscaled Precipitation From:", loc = "lower right", 
-          prop = {'size': tick_label_sz}, markerscale = 4, ncol=2, framealpha=0.8,
+          Line2D([], [], marker='.', markeredgecolor = 'k', markeredgewidth=2, color='lime', linestyle='-', linewidth=5),
+          Line2D([], [], marker='.', markeredgecolor = 'k', markeredgewidth=2, color='mediumorchid', linestyle='-', linewidth=5)]
+lgnd_color = ax.legend(handles = legend_handles, labels = ['Actual OPG', 'Training OPG', 'Testing OPG', 'LI + QM ERA5', 'LI + QM GEFS'], 
+          title="Downscaled\nPrecip. From:", bbox_to_anchor=(0.7, 0.45), 
+          prop = {'size': tick_label_sz}, markerscale = 4, ncol=1, framealpha=0.9,
           alignment='left')
 plt.setp(lgnd_color.get_title(),fontsize=tick_label_sz)
 
 
-# # Legend for dot sizes
-# legend_handles = [Line2D([],[],markersize=np.sqrt(10*sl),marker='.',markeredgecolor='k',markeredgewidth=2,color='lightgray',linestyle='None'),
-#                   Line2D([],[],markersize=np.sqrt(25*sl),marker='.',markeredgecolor='k',markeredgewidth=2,color='lightgray',linestyle='None'),
-#                   Line2D([],[],markersize=np.sqrt(50*sl),marker='.',markeredgecolor='k',markeredgewidth=2,color='lightgray',linestyle='None'),
-#                   Line2D([],[],markersize=np.sqrt(75*sl),marker='.',markeredgecolor='k',markeredgewidth=2,color='lightgray',linestyle='None'),
-#                   Line2D([],[],markersize=np.sqrt(95*sl),marker='.',markeredgecolor='k',markeredgewidth=2,color='lightgray',linestyle='None')]
-# lgnd2 = ax.legend(handles = legend_handles, 
-#                  labels = ['0.05', '0.25', '0.50', '0.75','0.95'], 
-#                  bbox_to_anchor=(1, -0.43),
-#                   title="Quantile Threshold:", loc = "lower right", 
-#                   prop = {'size': tick_label_sz}, markerscale = 4, ncol=1, framealpha=1,
-#                   alignment='left')
-# plt.setp(lgnd2.get_title(),fontsize=tick_label_sz)
-# plt.gca().add_artist(lgnd1)
-
-
 # labels
-ax.set_xlabel("Success Ratio (1 - FAR)", fontsize = axis_label_sz)
+ax.set_xlabel("Success Ratio (1 - False Alarm Rate)", fontsize = axis_label_sz)
 ax.set_ylabel("Probability of Detection", fontsize = axis_label_sz)
 ax.set_xticks(np.arange(0, 1.1, 0.1))
 ax.set_yticks(np.arange(0, 1.1, 0.1))
-ax.text(0.3,0.38,"Frequency Bias",fontdict=dict(fontsize=axis_label_sz, rotation=45), zorder = 12)
+ax.text(0.3,0.4,"Frequency Bias",fontdict=dict(fontsize=axis_label_sz, rotation=45), zorder = 12)
 ax.tick_params(axis = 'both', which = 'major', labelsize = tick_label_sz, pad = 5)
 
 # colorbar
@@ -995,32 +1181,12 @@ xx = np.array([0.8, 0.5, 0.2])
 yy = np.array([0.1, 0.1, 0.1])
 y_lev = 1.6
 
-# lgnd.plot(xx, yy*y_lev, '-', color = 'gold', linewidth = 6, zorder = 1)
-# lgnd.scatter(xx, yy*y_lev, color = 'gold',  s = [10*s, 25*s, 50*s, 75*s, 95*s], 
-#             edgecolor = 'k', linewidth = 2, zorder = 10)
-
-# # training
-# lgnd.plot(xx, yy*y_lev*2, '-', color = 'dodgerblue', linewidth = 6, zorder = 1)
-# lgnd.scatter(xx, yy*y_lev*2, color = 'dodgerblue',  s = [10*s, 25*s, 50*s, 75*s, 95*s], 
-#             edgecolor = 'k', linewidth = 2, zorder = 10)
-
-# # testing
-# lgnd.plot(xx, yy*y_lev*3, '-', color = 'orangered', linewidth = 6, zorder = 1)
-# lgnd.scatter(xx, yy*y_lev*3, color = 'orangered',  s = [10*s, 25*s, 50*s, 75*s, 95*s], 
-#             edgecolor = 'k', linewidth = 2, zorder = 10)
 
 # ERA5
 lgnd.plot(xx, yy*y_lev*2, '-', color = [0.6, 0.6, 0.6], linewidth = 6, zorder = 1)
 lgnd.scatter(xx, yy*y_lev*2, color = [0.6, 0.6, 0.6],  s = [10*s, 45*s, 95*s], 
             edgecolor = 'k', linewidth = 2, zorder = 10)
 
-# add variable labels
-# lgnd.text(0.66, yy[0]*y_lev,   "Actual OPG",   va='center', fontsize=tick_label_sz)
-# lgnd.text(0.66, yy[0]*y_lev*2, "Training OPG", va='center', fontsize=tick_label_sz)
-# lgnd.text(0.66, yy[0]*y_lev*3, "Testing OPG",  va='center', fontsize=tick_label_sz)
-# lgnd.text(0.66, yy[0]*y_lev*4, "LI + QM ERA5", va='center', fontsize=tick_label_sz)
-# lgnd.text(0.66, yy[0]*y_lev*5, "Downscaled Precipitation", va='center', 
-#           ha='left', fontsize=tick_label_sz)
 
 
 # Quantile Labels
@@ -1029,7 +1195,7 @@ lgnd.text(xx[1], yy[0]*y_lev*3.4, "75th", ha='center', fontsize=tick_label_sz)
 lgnd.text(xx[2], yy[0]*y_lev*3.4, "95th", ha='center', fontsize=tick_label_sz)
 # lgnd.text(xx[3], yy[0]*y_lev*3.4, "75th", ha='center', fontsize=tick_label_sz)
 # lgnd.text(xx[4], yy[0]*y_lev*3.4, "95th", ha='center', fontsize=tick_label_sz)
-lgnd.text(0.5,  yy[0]*y_lev*5.8, "Precipitation Percentile Threshold:", va='center', 
+lgnd.text(0.5,  yy[0]*y_lev*5.8, "GHCN-Daily Precip. Percentile Threshold:", va='center', 
           ha='center', fontsize=tick_label_sz)
 
 lgnd.set_ylim([0.12, 1.12])
@@ -1043,7 +1209,7 @@ lgnd.set_yticks([])
 
 
 path = model_dir + model_name + "/"
-plt.savefig(f"{path}performance_diagram_lgnd_50-95.png", dpi=300, 
+plt.savefig(f"{path}performance_diagram_lgnd_50-95_new.png", dpi=300, 
               transparent=True, bbox_inches='tight')
 
 plt.show()
