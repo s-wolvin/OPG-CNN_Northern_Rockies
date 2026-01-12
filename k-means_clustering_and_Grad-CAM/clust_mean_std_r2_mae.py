@@ -1,7 +1,7 @@
 """
 Savanna Wolvin
 Created: Jul 28th, 2023
-Edited: Aug 8th, 2025
+Edited: Dec 2nd, 2025
 
 ##### Summary ################################################################
 This script is used to plot the mean OPGs, mean absolute error, and r2 of the 
@@ -41,8 +41,12 @@ import os
 
 #%% Preset Variables
 
-model_dir = "/uufs/chpc.utah.edu/common/home/strong-group7/savanna/cstar/regional_facet_cnn_weighting/NR/"
-model_name = "2024-01-08_1113"
+# model_dir = "/uufs/chpc.utah.edu/common/home/strong-group7/savanna/cstar/regional_facet_cnn_weighting/NR/"
+# model_name = "2024-01-08_1113"
+
+model_dir = "/uufs/chpc.utah.edu/common/home/strong-group7/savanna/cstar/regional_facet_cnn_aies/NR/"
+model_name = "2025-12-01_1634"
+# model_name = "2025-12-02_1839"
 
 kmeans_dir = "/uufs/chpc.utah.edu/common/home/strong-group7/savanna/cstar/regional_kmeans_clust/"
 
@@ -176,6 +180,7 @@ r2          = np.zeros((np.max(kmeans['cluster'].values)+1,2))
 mae         = np.zeros((np.max(kmeans['cluster'].values)+1,2))
 mre         = np.zeros((np.max(kmeans['cluster'].values)+1,2))
 me          = np.zeros((np.max(kmeans['cluster'].values)+1,2))
+rmse        = np.zeros((np.max(kmeans['cluster'].values)+1,2))
 
 for clust in np.unique(kmeans['cluster'].values):
     
@@ -203,6 +208,7 @@ for clust in np.unique(kmeans['cluster'].values):
     mae[clust, 0] = np.nanmean(np.abs(actual - predicted))
     me[clust, 0] = np.around(np.nanmean(actual - predicted), decimals=5)
     mre[clust, 0] = np.around(np.nanmean(np.abs(actual - predicted)/actual), decimals=5)
+    rmse[clust, 0] = np.around(np.sqrt(np.nanmean((actual - predicted)**2)), decimals = 5)
     opg_mean[clust, 0] = np.mean(predicted)
     opg_std[clust, 0] = np.std(predicted)
     
@@ -227,6 +233,7 @@ for clust in np.unique(kmeans['cluster'].values):
     mae[clust, 1] = np.nanmean(np.abs(actual - predicted))
     me[clust, 1]  = np.around(np.nanmean(actual - predicted), decimals=5)
     mre[clust, 1] = np.around(np.nanmean(np.abs(actual - predicted)/actual), decimals=5)
+    rmse[clust, 1] = np.around(np.sqrt(np.nanmean((actual - predicted)**2)), decimals = 5)
     opg_mean[clust, 1] = np.mean(predicted)
     opg_std[clust, 1] = np.std(predicted)
     
@@ -271,27 +278,31 @@ ax[1].grid(True, which='both')
 
 
 # Bar plots of mean OPG and MAE
-ax[0].bar(x_range-0.25, opg_mean[:,2], 0.25, label='Actual', fc=act_color)
-ax[0].bar(x_range, opg_mean[:,0], 0.25, label='Training', fc=tra_color)
-ax[0].bar(x_range+0.25, opg_mean[:,1], 0.25, label='Testing', fc=tes_color)
+ax[0].bar(x_range-0.25, opg_mean[:,2]*1000, 0.25, label='Actual', fc=act_color)
+ax[0].bar(x_range, opg_mean[:,0]*1000, 0.25, label='Training', fc=tra_color)
+ax[0].bar(x_range+0.25, opg_mean[:,1]*1000, 0.25, label='Testing', fc=tes_color)
 
-ax[0].scatter(x_range, mae[:,0], s=150, edgecolors='black', 
+ax[0].scatter(x_range, mae[:,0]*1000, s=150, edgecolors='black', 
            facecolor='None', label='MAE to Actual OPG')
-ax[0].scatter(x_range+0.25, mae[:,1], s=150, edgecolors='black', 
+ax[0].scatter(x_range+0.25, mae[:,1]*1000, s=150, edgecolors='black', 
            facecolor='None')
 
+ax[0].scatter(x_range, rmse[:,0]*1000, s=150, color='black', marker='x', 
+              label='RMSE to Actual OPG')
+ax[0].scatter(x_range+0.25, rmse[:,1]*1000, s=150, color='black', marker='x')
+
 #ax[0].set_ylabel('OPG (mm/km)')
-ax[0].set_title('a) Mean OPG (mm/m)', size=tt_sz)
+ax[0].set_title('a) Mean OPG (mm/km)', size=tt_sz)
 # ax[0].set_xticks(x_range, fonstize=lbl_sz)
 ax[0].set_xticks(x_range)
 ax[1].set_xlabel('Regional Daily Winter OPG Event Clusters', size=lbl_sz)
 ax[0].legend(loc='upper right', ncols=1, fontsize=lbl_sz)
-ax[0].set_ylim(0,0.0105)
+ax[0].set_ylim(0,15)
 ax[0].set_xlim(np.min(x_range)-0.5,np.max(x_range)+0.5)
 
 ax[0].grid(True, which='major', color='dimgrey')
 ax[0].set_axisbelow(True)
-ax[0].yaxis.set_minor_locator(MultipleLocator(0.001))
+ax[0].yaxis.set_minor_locator(MultipleLocator(1))
 ax[0].grid(True, which='both')
 
 
@@ -303,10 +314,10 @@ path = model_dir + model_name + "/kmeans/"
 if os.path.exists(path) == False:
     os.mkdir(path)
 
+
+
+plt.savefig(f"{path}kmeans_cluster_stats_bar_scatter.png", dpi=300, 
+            transparent=True, bbox_inches='tight')
+
 plt.show()
-
-# plt.savefig(f"{path}kmeans_cluster_stats_bar_scatter.png", dpi=300, 
-#             transparent=True, bbox_inches='tight')
-
-
 
