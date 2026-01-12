@@ -1,7 +1,7 @@
 """ 
 Savanna Wolvin
 Created: Sep 27th, 2022
-Edited: Apr 30th, 2024
+Edited: Dec 31st, 2025
     
 
 ##### SUMMARY #####
@@ -45,18 +45,40 @@ import pandas as pd
 
 class weighted_MSE(tf_k.losses.Loss):
     def call(self, y_true, y_pred):
+        # formulate squared error
         se  = tf.math.square(y_pred - y_true)
+        
+        # formulate mask and mask zeros
         mask = tf.cast(y_true != 0, tf.float32)
-        weight_se = se * mask
-        weight_mse = tf.reduce_mean(weight_se, axis=-1)
-        return weight_mse
+        mask_se = se * mask
+        
+        # Count number of valid observations
+        valid_count = tf.reduce_sum(mask, axis=-1)
+        valid_count = tf.maximum(valid_count, 1.0)
+        
+        # formulate mean of the weighted, masked error
+        mask_mse = tf.reduce_sum(mask_se, axis=-1)/valid_count
+
+        return mask_mse 
+    
+class MSE(tf_k.losses.Loss):
+    def call(self, y_true, y_pred):
+        # formulate squared error
+        se  = tf.math.square(y_pred - y_true)
+        
+        # formulate mean of the weighted, masked error
+        mse = tf.reduce_mean(se, axis=-1)
+
+        return mse 
     
 class weighted_MAE(tf_k.losses.Loss):
     def call(self, y_true, y_pred):
         ae  = tf.math.abs(y_pred - y_true)
         mask = tf.cast(y_true != 0, tf.float32)
         weight_ae = ae * mask
-        weight_mae = tf.reduce_mean(weight_ae, axis=-1)
+        valid_count = tf.reduce_sum(mask, axis=-1)
+        valid_count = tf.maximum(valid_count, 1.0)
+        weight_mae = tf.reduce_sum(weight_ae, axis=-1)/valid_count
         return weight_mae
 
 
@@ -115,7 +137,9 @@ def train_cnn(model, opg_type, save_dir, epoch_num, patienceX, batch_sz,
             count_OF += 1
     
     # Compile CNN Model
-    model.compile(optimizer="rmsprop", loss=weighted_MSE(),
+    # model.compile(optimizer=tf_k.optimizers.RMSprop(learning_rate=1e-3), loss=weighted_MSE(),
+    #               metrics = ["mean_squared_error", "mean_absolute_error"])
+    model.compile(optimizer=tf_k.optimizers.RMSprop(learning_rate=1e-3), loss=MSE(),
                   metrics = ["mean_squared_error", "mean_absolute_error"])
     
     # Combine Inputs if On-Facet Data Exists
@@ -214,10 +238,13 @@ def structure_cnn(atmosphere, conv_act_func, nn_layer_width, nn_hidden_layer,
     # Define Size of Image Inputs
     inputs = tf_k.Input(shape = (data_coords["lat"], data_coords["lon"], count_channels), name="input")
     x = tf_k.layers.Conv2D(filters=kernal_num, kernel_size=kernal_sz, activation=conv_act_func, padding="same", name="conv2d_1") (inputs)
+    x = tf_k.layers.BatchNormalization(name="batch_norm_1") (x)
     x = tf_k.layers.MaxPooling2D(pool_size = 2, name="max_pooling_1")(x)
     x = tf_k.layers.Conv2D(filters=(kernal_num*2), kernel_size=kernal_sz, activation=conv_act_func, padding="same", name="conv2d_2") (x)
+    x = tf_k.layers.BatchNormalization(name="batch_norm_2") (x)
     x = tf_k.layers.MaxPooling2D(pool_size = 2, name="max_pooling_2")(x)
     x = tf_k.layers.Conv2D(filters=(kernal_num*4), kernel_size=kernal_sz, activation=conv_act_func, padding="same", name="conv2d_3") (x)
+    x = tf_k.layers.BatchNormalization(name="batch_norm_3") (x)
     x = tf_k.layers.MaxPooling2D(pool_size = 2, name="max_pooling_3")(x)
 
     x = tf_k.layers.Flatten(name="flatten")(x)

@@ -1,7 +1,7 @@
 """ 
 Savanna Wolvin
 Created: Sep 9th, 2022
-Edited: Apr 30th, 2024
+Edited: Dec 31st, 2025
     
 
 ##### SUMMARY ################################################################
@@ -103,6 +103,7 @@ import numpy as np
 from datetime import datetime, timedelta
 import os
 import random as rd
+from tqdm import tqdm
 import load_data as ld
 import conv_nn as cnn
 import cnn_plots as plots
@@ -110,7 +111,6 @@ import grad_cam as grd_cm
 import model_output as output
 import terrain_plots as terrain
 import pandas as pd
-
 
 
 
@@ -132,6 +132,14 @@ data_types      = {"uwnd": ["700"],
                     "shum": ["850"],
                     "temp": ["700"]}
 
+# data_types      = {"uwnd": ["700"],
+#                     "vwnd_10m": ["sfc"],
+#                     "wwnd": ["700"],
+#                     "hgt": ["500"],
+#                     "IVT": ["sfc"],
+#                     "shum": ["850"],
+#                     "temp": ["700"]}
+
 
 ### Domain Values
 years           = [1979, 2018]
@@ -151,9 +159,10 @@ epoch_num       = 100
 nn_layer_width  = 48
 nn_hidden_layer = 2
 batch_sz        = 32
-optimizer_class = "sgd"
+optimizer_class = "RMSprop"
 loss_metric     = "mean_squared_error"
 patience        = 7
+best_seed       = 5477 
 
 ### Facet Presets
 opg_directory = "/uufs/chpc.utah.edu/common/home/strong-group7/savanna/cstar/opg/"
@@ -172,19 +181,16 @@ num_station = 3
 
 ### Saving Presets
 save_dir = "/uufs/chpc.utah.edu/common/home/strong-group7/savanna/cstar/" + \
-                                    "regional_facet_cnn_weighting/" + facet_region + "/"
+                                    "regional_facet_cnn_aies/" + facet_region + "/"
 save_model = True
 
 ### Notes to add to model_info.txt
 notes = "\nNotes: \n" + \
         "- the model output statisitcs have been fixed \n" + \
         "- the oversampling of higher precipitation days was removed \n" + \
-        "- percent of obs is 20% FOUND THAT NEGATIVES WERE NOT BEING COUNTED!!!! \n" + \
+        "- percent of obs is 20% \n" + \
         "- No weighting \n" + \
         "- Custom loss function to account for NaNs \n" + \
-        "- Full runthrough with selected variables \n" + \
-        "- Full Run with relu/sigmoid \n" + \
-        "- removed facet weighting \n" + \
         "- Re-run with 3 convolutions"
 
 
@@ -213,7 +219,11 @@ def main():
     
     
     ##### Define Days for Training, Testing ##################################
-    train_days, vldtn_days, test_days = allocate_dataset_months(data_days)
+    # train_days, vldtn_days, test_days = allocate_dataset_months(data_days)
+    
+    
+    ##### Distribute Training/Validation/Testing by Values ###################
+    train_days, vldtn_days, test_days, seed_val, var_val = allocate_dataset_var(facet_opg, data_days, best_seed)
     
     
     ##### Create save location ###########################################
@@ -373,7 +383,7 @@ def allocate_dataset_months(data_days):
     num_vldtn_months = np.round(prct_vldtn_days * num_months).astype('int')
     
     # Shuffle the Months
-    shuffled_months = rd.sample(set(mth_yr), len(mth_yr))
+    shuffled_months = rd.sample(list(mth_yr), len(mth_yr))
     shuffled_months = rd.sample(shuffled_months, len(shuffled_months))
     
     # Pull the Test, Validation, and Train Months
@@ -392,6 +402,92 @@ def allocate_dataset_months(data_days):
     return train_days, vldtn_days, test_days
 
 
+#%%
+
+def allocate_dataset_var(opg, data_days, best_seed):
+ 
+    varssss = []
+    
+    # Season labels
+    dates = pd.to_datetime(data_days)
+    season = np.where(dates.month == 12, dates.year, dates.year - 1)
+    season = pd.factorize(season)[0]
+    
+    # Calc Number of seasons for each Subset
+    num_seasons = len(np.unique(season))
+    num_test_ssn = np.round(prct_test_days * num_seasons).astype('int')
+    num_vldtn_ssn = np.round(prct_vldtn_days * num_seasons).astype('int')
+    
+    if best_seed == None:
+        
+        # save variances and seed number
+        best_seed = []
+        variances = [float('inf'), float('inf'), float('inf')]
+        best_score = float('inf')
+        # variances = [float('inf'), float('inf'), float('inf'), float('inf')]
+    
+        # loop through 1000 seeds
+        for seed in tqdm(range(10000), desc="Searching Seeds..."):
+            
+            # set seed
+            rd.seed(seed)
+            
+            # Shuffle the Months
+            shuffled_season = rd.sample(list(np.unique(season)), len(np.unique(season)))
+            
+            # Pull the test, validation, and train seasons
+            test_ssn = shuffled_season[0:num_test_ssn]
+            test_days = data_days[[day in test_ssn for day in season]]
+            
+            vldtn_ssn = shuffled_season[num_test_ssn:(num_test_ssn+num_vldtn_ssn)]
+            vldtn_days = data_days[[day in vldtn_ssn for day in season]]
+            
+            train_ssn = shuffled_season[(num_test_ssn+num_vldtn_ssn):]
+            train_days = data_days[[day in train_ssn for day in season]]
+
+            # formulate variances
+            test = opg.isel(time=np.isin(opg.time, test_days))
+            vldtn = opg.isel(time=np.isin(opg.time, vldtn_days))
+            train = opg.isel(time=np.isin(opg.time, train_days))
+            
+            test    = np.nanvar(test['opg'].where(test['opg'] != 0, np.nan), axis = 0)
+            vldtn   = np.nanvar(vldtn['opg'].where(vldtn['opg'] != 0, np.nan), axis = 0)
+            train   = np.nanvar(train['opg'].where(train['opg'] != 0, np.nan), axis = 0)
+                        
+            score = np.mean((train + vldtn + test)) + \
+                    np.mean(np.abs(train - vldtn)) + np.mean(np.abs(vldtn - test)) + np.mean(np.abs(train - test))
+            
+            if score < best_score:
+                best_seed = seed
+                best_score = score
+                best_var = [test, vldtn, train]
+                
+            # if test < variances[0] and vldtn < variances[1] and train < variances[2]:
+            #     best_seed = seed
+            #     variances = [test, vldtn, train]
+                
+    else:
+        variances = []
+            
+    # Defind best seed value and send new train test days
+    rd.seed(best_seed)
+    
+    # Shuffle the Months
+    shuffled_season = rd.sample(list(np.unique(season)), len(np.unique(season)))
+    
+    # Pull the test, validation, and train seasons
+    test_ssn = shuffled_season[0:num_test_ssn]
+    test_days = data_days[[day in test_ssn for day in season]]
+    
+    vldtn_ssn = shuffled_season[num_test_ssn:(num_test_ssn+num_vldtn_ssn)]
+    vldtn_days = data_days[[day in vldtn_ssn for day in season]]
+    
+    train_ssn = shuffled_season[(num_test_ssn+num_vldtn_ssn):]
+    train_days = data_days[[day in train_ssn for day in season]]
+
+    return train_days, vldtn_days, test_days, best_seed, variances
+
+
 
 #%% Create the needed dimentional arrays: Lats, Lons, Time Domain ############
 
@@ -400,7 +496,7 @@ def create_domain_arrays(data_set):
     
     if data_set == "ERA5":
         data_directory = "/uufs/chpc.utah.edu/common/home/strong-group7/" + \
-            "savanna/ecmwf_era5/"
+            "savanna/ecmwf_era5/western_CONUS/"
         grid_spacing   = 0.5
         
     else: raise Exception("Dataset Not Listed")

@@ -29,8 +29,6 @@ import cartopy.feature as cfeat
 from matplotlib.colors import ListedColormap
 
 
-
-
 #%% 
 """ FUNCTION DEFINITION: facet_map_terrain
     INPUTS
@@ -202,7 +200,7 @@ def facet_map_labeled(save_dir, fi_dir, facet_opg):
     # plt.savefig(save_dir + "facet_map_labeled.png", dpi=400, transparent=True, \
     #             bbox_inches='tight')
 
-    plt.close()
+    # plt.close()
     plt.show()
     
     

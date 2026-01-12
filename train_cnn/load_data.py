@@ -146,7 +146,7 @@ def create_era5_dataset(d_years, d_lats, d_lons, d_types,
                                 dims=['lat','lon'])
                     
                     # Standardized the Value By Grid Point
-                    atmosphereX[atmos_varsX] = ((atmosphereX[atmos_varsX] - atmosphereX[atmos_varsX].mean(dim=["time"])) / atmosphereX[atmos_varsX].std(dim=["time"]))
+                    atmosphereX[atmos_varsX] = ((atmosphereX[atmos_varsX] - atmosphereX[atmos_varsX].mean(dim="time")) / atmosphereX[atmos_varsX].std(dim="time"))
                     
                     # Add Variable to the Total Structure
                     atmosphere[atmos_varsX+press_levX] = xr.DataArray(
@@ -297,7 +297,7 @@ def get_regional_opg(d_years, opg_dir, fi_dir, fi_region, months, opg_nans,
     facet_opg = facet_opg.isel(time=(facet_opg.time.dt.month.isin(months)))
     
     # Drop Facets Without Observations
-    opg_nan_idx = facet_opg['opg'].sum(dim = 'time', skipna = True) == 0
+    opg_nan_idx = facet_opg['opg'].sum(dim = 'time', skipna = True).values == 0
     facet_opg   = facet_opg.drop_sel(facet_num=(fi_num[opg_nan_idx]))
     
     # Drop Facets With Not Enough Observations

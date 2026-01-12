@@ -187,8 +187,8 @@ def hist_r2_rrank_MAE_slope(save_dir, model, opg_type, name, atmos, opg):
     axs[1,1].set(ylim=(0, ymax+1))
     
     # Save figure
-    # plt.savefig(save_dir + str(name) + "_r2_slope_mae_mse.png", dpi=200, 
-    #             transparent=True, bbox_inches='tight')
+    plt.savefig(save_dir + str(name) + "_r2_slope_mae_mse.png", dpi=200, 
+                transparent=True, bbox_inches='tight')
     
     # Show Figure
     plt.show()
@@ -283,8 +283,8 @@ def heatmap_by_facet(save_dir, model, opg_type, name, atmos, opg):
         plt.grid(True)
         
         # save figure
-        # plt.savefig(path + name + '_actVSpred_heatmap_facet' + str(facet_num) + '.png', 
-        #             dpi=200, transparent=True, bbox_inches='tight')
+        plt.savefig(path + name + '_actVSpred_heatmap_facet' + str(facet_num) + '.png', 
+                    dpi=200, transparent=True, bbox_inches='tight')
     
         plt.close()
         plt.show()
@@ -366,8 +366,8 @@ def heatmap(save_dir, model, opg_type, name, atmos, opg):
     plt.grid(True)
     
     # save figure
-    # plt.savefig(save_dir + name + '_actVSpred_heatmap.png', dpi=200, 
-    #             transparent=True, bbox_inches='tight')
+    plt.savefig(save_dir + name + '_actVSpred_heatmap.png', dpi=200, 
+                transparent=True, bbox_inches='tight')
     
     plt.close()
     plt.show()
@@ -449,8 +449,8 @@ def training_validation_loss(save_dir, history, loss_metric, opg_type):
     plt.grid(True)
     
     # Save figure
-    # plt.savefig(save_dir + 'train_vldtn_loss.png', dpi=300, transparent=True, 
-    #             bbox_inches='tight')
+    plt.savefig(save_dir + 'train_vldtn_loss.png', dpi=300, transparent=True, 
+                bbox_inches='tight')
 
     plt.close()
     plt.show()
